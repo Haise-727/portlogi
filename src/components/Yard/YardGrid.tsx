@@ -121,10 +121,18 @@ function CraneStage({ bandOf }: { bandOf: (c: Container) => PriorityBand }) {
   return <CraneLayer cranes={cranes} containers={containers} bandOf={bandOf} />
 }
 
+/**
+ * The route is drawn while a box is actually travelling it. Once the crane has
+ * set the box down the line comes off the yard, though the inspector keeps its
+ * cost, turns and expanded-node count.
+ */
 function RouteStage() {
   const route = useYard((s) => s.route)
   const showExplored = useYard((s) => s.showExplored)
-  return <RouteOverlay route={route} showExplored={showExplored} />
+  const live = useYard((s) =>
+    s.cranes.some((c) => c.id === s.route?.craneId && c.carrying !== null),
+  )
+  return <RouteOverlay route={live ? route : null} showExplored={showExplored} />
 }
 
 /** The aisle network the cranes run in, drawn as paved lanes so the movement
