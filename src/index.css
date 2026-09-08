@@ -1,0 +1,91 @@
+@import '@fontsource-variable/geist';
+@import '@fontsource-variable/geist-mono';
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Geist Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'Geist Mono Variable', ui-monospace, monospace;
+
+  /* neutral chassis */
+  --color-void: #080b0d;
+  --color-panel: #0e1316;
+  --color-raise: #151b20;
+  --color-line: #1e262c;
+  --color-line-hi: #2c363e;
+  --color-ink: #e4ebf0;
+  --color-ink-2: #8b9aa5;
+  --color-ink-3: #56646e;
+
+  /* the one accent: selection, route, chosen slot */
+  --color-signal: #2fa9bc;
+  --color-signal-dim: #1b4d56;
+
+  /* priority bands — the only other colours in the system */
+  --color-critical: #e0503c;
+  --color-high: #de9a32;
+  --color-normal: #5e8ca6;
+  --color-low: #4a5a65;
+  --color-reject: #6e3a38;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    background: var(--color-void);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+  }
+
+  /* tabular figures everywhere numerals appear, so counters don't jitter */
+  .font-mono,
+  code {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'ss01';
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-line-hi);
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-ink-3);
+  }
+
+  :focus-visible {
+    outline: 1px solid var(--color-signal);
+    outline-offset: 1px;
+  }
+}
+
+@layer utilities {
+  /* machine-token label: caps are the real convention for slot ids and band names */
+  .token {
+    font-family: var(--font-mono);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
