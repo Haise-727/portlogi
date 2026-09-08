@@ -19,6 +19,7 @@ type Props = {
   chosen: boolean
   candidateScore: number | null
   rejected: string | null
+  chain: Set<string>
   hovered: boolean
   onHover: (slot: string | null) => void
   onSelect: (id: string) => void
@@ -32,6 +33,7 @@ export function Slot({
   chosen,
   candidateScore,
   rejected,
+  chain,
   hovered,
   onHover,
   onSelect,
@@ -50,7 +52,7 @@ export function Slot({
         className="absolute inset-[3px] transition-colors duration-150"
         style={{
           background: rejected
-            ? 'repeating-linear-gradient(45deg, color-mix(in srgb, var(--color-reject) 22%, var(--color-raise)) 0 4px, var(--color-raise) 4px 9px)'
+            ? 'repeating-linear-gradient(45deg, color-mix(in srgb, var(--color-reject) 15%, var(--color-raise)) 0 4px, var(--color-raise) 4px 10px)'
             : 'var(--color-raise)',
           border: `1px solid ${
             chosen
@@ -102,6 +104,7 @@ export function Slot({
           band={bands[i]}
           tier={tier}
           selected={selected === c.id}
+          flagged={chain.has(c.id)}
           onClick={() => onSelect(c.id)}
           style={{
             left: `${TIER_POS[tier].left}%`,
@@ -122,7 +125,7 @@ export function Slot({
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.14 }}
-            className="pointer-events-none absolute bottom-[4px] left-1/2 z-10 -translate-x-1/2 border px-[4px] py-[1px] font-mono text-[9px] leading-none"
+            className="pointer-events-none absolute left-[26px] top-[3px] z-10 border px-[4px] py-[1px] font-mono text-[9px] leading-none"
             style={{
               background: 'color-mix(in srgb, var(--color-void) 82%, transparent)',
               borderColor: chosen ? 'var(--color-signal)' : 'var(--color-line-hi)',

@@ -1,4 +1,4 @@
-import { motion } from 'motion/react'
+import { motion, useReducedMotion } from 'motion/react'
 import { shortId } from '../../lib/generator'
 import type { Container, PriorityBand } from '../../lib/types'
 import { YARD_H, YARD_W } from '../../lib/geometry'
@@ -50,15 +50,17 @@ function CraneBody({
   cargo: Container | null
   band: PriorityBand
 }) {
+  const still = useReducedMotion()
   const held = crane.mode === 'held'
   const lifting = crane.mode === 'hoisting' || crane.mode === 'lowering'
+  const pulse = held && !still
 
   return (
     <div className="relative aspect-square w-full">
       {/* portal frame, seen from above: two legs and the beam between them */}
       <motion.div
-        animate={held ? { opacity: [1, 0.42, 1] } : { opacity: 1 }}
-        transition={held ? { duration: 1.1, repeat: Infinity, ease: 'easeInOut' } : { duration: 0.2 }}
+        animate={pulse ? { opacity: [1, 0.42, 1] } : { opacity: 1 }}
+        transition={pulse ? { duration: 1.1, repeat: Infinity, ease: 'easeInOut' } : { duration: 0.2 }}
         className="absolute inset-0"
       >
         <span
@@ -81,7 +83,7 @@ function CraneBody({
       {/* the box being carried, held in the spreader */}
       {cargo && (
         <motion.div
-          animate={lifting ? { scale: [1, 0.82, 1] } : { scale: 1 }}
+          animate={lifting && !still ? { scale: [1, 0.82, 1] } : { scale: 1 }}
           transition={{ duration: 0.55, ease: 'easeInOut' }}
           className="absolute inset-x-[10%] top-[28%] h-[44%]"
           style={{

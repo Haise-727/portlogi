@@ -1,12 +1,16 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { MotionConfig } from 'motion/react'
 import { ComparisonMode } from './components/Comparison/ComparisonMode'
 import { ControlPanel, RetrievalQueue } from './components/Panels/ControlPanel'
 import { ContainerDetail } from './components/Panels/ContainerDetail'
 import { EventLog } from './components/Panels/EventLog'
 import { Inspector } from './components/Panels/Inspector'
 import { Metrics } from './components/Panels/Metrics'
+import { RehandlePlan } from './components/Panels/RehandlePlan'
 import { StatusBar } from './components/Panels/StatusBar'
+import { Legend } from './components/Yard/Legend'
 import { YardGrid } from './components/Yard/YardGrid'
+import { useShortcuts } from './hooks/useShortcuts'
 import { clock } from './store/yardStore'
 
 /**
@@ -16,6 +20,8 @@ import { clock } from './store/yardStore'
  */
 export default function App() {
   const [comparing, setComparing] = useState(false)
+  const toggleCompare = useCallback(() => setComparing((c) => !c), [])
+  useShortcuts(toggleCompare)
 
   useEffect(() => {
     clock.start()
@@ -23,17 +29,20 @@ export default function App() {
   }, [])
 
   return (
+    <MotionConfig reducedMotion="user">
     <div className="grid h-full grid-rows-[34px_minmax(0,1fr)] bg-void">
       <StatusBar />
       <div className="grid min-h-0 grid-cols-[288px_minmax(0,1fr)_384px]">
-        <aside className="grid min-h-0 grid-rows-[auto_auto_minmax(0,1fr)] border-r border-line bg-panel">
+        <aside className="grid min-h-0 grid-rows-[auto_auto_minmax(0,1fr)_auto] border-r border-line bg-panel">
           <ControlPanel onCompare={() => setComparing(true)} />
           <Metrics />
           <RetrievalQueue />
+          <RehandlePlan />
         </aside>
 
-        <main className="min-h-0 bg-void">
+        <main className="grid min-h-0 grid-rows-[minmax(0,1fr)_auto] bg-void">
           <YardGrid />
+          <Legend />
         </main>
 
         <aside className="grid min-h-0 grid-rows-[minmax(0,1fr)_minmax(0,34%)] border-l border-line bg-panel">
@@ -46,5 +55,6 @@ export default function App() {
       </div>
       {comparing && <ComparisonMode onClose={() => setComparing(false)} />}
     </div>
+    </MotionConfig>
   )
 }

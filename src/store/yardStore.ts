@@ -33,10 +33,23 @@ export type CraneMode = 'idle' | 'moving' | 'hoisting' | 'lowering' | 'held'
 
 export type Leg =
   | { kind: 'move'; goal: Cell; note: string }
-  | { kind: 'hoist'; containerId: string; slot: string }
-  | { kind: 'lower'; containerId: string; slot: string }
+  | { kind: 'hoist'; containerId: string; slot: string; slow?: boolean }
+  | { kind: 'lower'; containerId: string; slot: string; slow?: boolean }
   | { kind: 'collect'; containerId: string }
   | { kind: 'depart'; containerId: string }
+
+/**
+ * What a buried retrieval will cost, worked out before anyone commits to it.
+ * Shown to the operator so the dig-out is a decision rather than a surprise.
+ */
+export type RetrievalPlan = {
+  containerId: string
+  slot: string
+  blockers: { id: string; from: string; to: string }[]
+  /** true when every blocking box departs later than this one — a genuine mis-stack */
+  wasted: boolean
+  extraMoves: number
+}
 
 export type Crane = {
   id: string
@@ -107,6 +120,7 @@ export type YardState = {
   allocationSeq: number
   route: RoutePreview | null
   rehandleChain: string[]
+  pendingPlan: RetrievalPlan | null
   selected: string | null
   hoveredSlot: string | null
   metrics: Metrics
@@ -117,6 +131,8 @@ export type YardActions = {
   tick: (dt: number) => void
   scan: () => void
   requestRetrieve: (containerId: string) => void
+  confirmRetrieve: () => void
+  cancelRetrieve: () => void
   setSpeed: (speed: number) => void
   toggleRunning: () => void
   toggleAuto: () => void
@@ -136,6 +152,20 @@ const ARRIVAL_INTERVAL = 3.2
 /** A stored box this close to its ETD is called forward automatically. */
 const CALL_FORWARD = 22
 const SEED = 20260908
+
+/**
+ * With reduced motion asked for, cranes step cell to cell instead of gliding.
+ * The simulation still runs — the state changes are the content — but nothing
+ * slides across the screen.
+ */
+const reducedMotionQuery =
+  typeof window !== 'undefined' && window.matchMedia
+    ? window.matchMedia('(prefers-reduced-motion: reduce)')
+    : null
+let reducedMotion = reducedMotionQuery?.matches ?? false
+reducedMotionQuery?.addEventListener('change', (e) => {
+  reducedMotion = e.matches
+})
 
 const reservations = new ReservationTable()
 const generator = createGenerator(SEED)
@@ -206,6 +236,7 @@ function initialState(): YardState {
     allocationSeq: 0,
     route: null,
     rehandleChain: [],
+    pendingPlan: null,
     selected: null,
     hoveredSlot: null,
     metrics: {
@@ -265,6 +296,55 @@ function log(d: Draft, severity: EventSeverity, message: string, ref?: string): 
   d.events = [{ id: eventId++, at: d.now, severity, message, ref }, ...d.events].slice(0, 200)
 }
 
+/** Drop the dirty-tracking field before the draft goes back into the store. */
+function strip(d: Draft): YardState {
+  const { dirty, ...next } = d
+  void dirty
+  return next
+}
+
+function enqueueRetrieve(d: Draft, c: Container): void {
+  const p = priorityOf(d, c)
+  d.jobs = [...d.jobs, { kind: 'retrieve', containerId: c.id, priority: p.score, createdAt: d.now }]
+}
+
+/**
+ * Work out, before committing, exactly which boxes have to move and where they
+ * would go. Uses the same allocator that will run at execution time, so the
+ * preview is the plan rather than an estimate of one.
+ */
+function planRetrieval(d: Draft, target: Container): RetrievalPlan {
+  const slot = target.slot!
+  const stack = d.stacks[slot]
+  const above = stack.slice((target.tier ?? 0) + 1)
+  const working = snapshotOf(d)
+  const blockers: RetrievalPlan['blockers'] = []
+
+  for (const id of [...above].reverse()) {
+    const blocker = d.containers[id]
+    const to = pickTempSlot(blocker, working, slot, d, d.cranes[0])
+    if (!to) continue
+    blockers.push({ id, from: slot, to })
+    working[slot] = working[slot].filter((c) => c.id !== id)
+    working[to] = [...working[to], blocker]
+  }
+
+  // Two very different situations wear the same shape. Either the boxes on top
+  // leave later than this one, in which case the stack was built wrong and the
+  // dig-out is pure waste; or they leave sooner, in which case the stack was
+  // right and the dig-out is the price of calling this box forward early.
+  const wasted = blockers.every((b) => d.containers[b.id].etd > target.etd)
+
+  return {
+    containerId: target.id,
+    slot,
+    blockers,
+    wasted,
+    // off the stack and back on again
+    extraMoves: blockers.length * 2,
+  }
+}
+
 function snapshotOf(d: Draft): YardSnapshot {
   const snap = emptySnapshot()
   for (const slot of SLOT_IDS) {
@@ -313,9 +393,7 @@ export const useYard = create<YardState & YardActions>((set, get) => ({
         craneElapsed: state.metrics.craneElapsed + dt * cranes.length,
       }
 
-      const { dirty, ...next } = d
-      void dirty
-      return next
+      return strip(d)
     })
   },
 
@@ -324,14 +402,10 @@ export const useYard = create<YardState & YardActions>((set, get) => ({
       const d = draftOf(state)
       if (freeCapacity(d) <= 0) {
         log(d, 'critical', 'Gate hold — yard at capacity, no legal position for a new box.')
-        const { dirty, ...next } = d
-        void dirty
-        return next
+        return strip(d)
       }
       admit(d)
-      const { dirty, ...next } = d
-      void dirty
-      return next
+      return strip(d)
     })
   },
 
@@ -339,32 +413,64 @@ export const useYard = create<YardState & YardActions>((set, get) => ({
     set((state) => {
       const d = draftOf(state)
       const c = d.containers[containerId]
-      if (!c || c.status !== 'stored') {
-        const { dirty, ...next } = d
-        void dirty
-        return next
+      if (!c || c.status !== 'stored' || isBusyWith(d, containerId)) {
+        return strip(d)
       }
-      if (isBusyWith(d, containerId)) {
-        const { dirty, ...next } = d
-        void dirty
-        return next
-      }
-      const p = priorityOf(d, c)
-      d.jobs = [...d.jobs, { kind: 'retrieve', containerId, priority: p.score, createdAt: d.now }]
+
       const stack = d.stacks[c.slot!]
       const above = stack.slice((c.tier ?? 0) + 1)
-      d.rehandleChain = above
+
+      // Nothing on top: no decision to make, just work it.
+      if (above.length === 0) {
+        enqueueRetrieve(d, c)
+        log(d, 'action', `Retrieval ${c.id} queued — top of stack, direct lift.`, containerId)
+        return strip(d)
+      }
+
+      // Buried: cost it out and put the chain in front of the operator first.
+      d.pendingPlan = planRetrieval(d, c)
       log(
         d,
-        above.length ? 'warn' : 'action',
-        above.length
-          ? `Retrieval ${c.id} queued — buried under ${above.length} box${above.length === 1 ? '' : 'es'}, ${above.length * 2} extra crane moves.`
-          : `Retrieval ${c.id} queued — top of stack, direct lift.`,
+        'warn',
+        `${c.id} is buried under ${above.length} box${above.length === 1 ? '' : 'es'} — ${
+          above.length * 2
+        } extra crane moves before it can be loaded. Awaiting confirmation.`,
         containerId,
       )
-      const { dirty, ...next } = d
-      void dirty
-      return next
+      return strip(d)
+    })
+  },
+
+  confirmRetrieve() {
+    set((state) => {
+      const d = draftOf(state)
+      const plan = d.pendingPlan
+      if (!plan) return strip(d)
+      const c = d.containers[plan.containerId]
+      d.pendingPlan = null
+      if (!c || c.status !== 'stored') return strip(d)
+      enqueueRetrieve(d, c)
+      d.rehandleChain = plan.blockers.map((b) => b.id)
+      log(
+        d,
+        'critical',
+        `Dig-out authorised for ${c.id} — ${plan.blockers
+          .map((b) => `${d.containers[b.id].id} to ${b.to}`)
+          .join(', ')}, then back again.`,
+        plan.containerId,
+      )
+      return strip(d)
+    })
+  },
+
+  cancelRetrieve() {
+    set((state) => {
+      const d = draftOf(state)
+      if (d.pendingPlan) {
+        log(d, 'info', `Dig-out for ${d.containers[d.pendingPlan.containerId]?.id} cancelled.`)
+      }
+      d.pendingPlan = null
+      return strip(d)
     })
   },
 
@@ -583,9 +689,9 @@ function buildRetrieve(d: Draft, job: Job, crane: Crane): Crane | null {
       return null
     }
     legs.push({ kind: 'move', goal: slotToCell(slot), note: `to ${slot}` })
-    legs.push({ kind: 'hoist', containerId: blockerId, slot })
+    legs.push({ kind: 'hoist', containerId: blockerId, slot, slow: true })
     legs.push({ kind: 'move', goal: slotToCell(temp), note: `set down at ${temp}` })
-    legs.push({ kind: 'lower', containerId: blockerId, slot: temp })
+    legs.push({ kind: 'lower', containerId: blockerId, slot: temp, slow: true })
     parked.push({ id: blockerId, slot: temp })
     working[slot] = working[slot].filter((c) => c.id !== blockerId)
     working[temp] = [...working[temp], blocker]
@@ -599,9 +705,9 @@ function buildRetrieve(d: Draft, job: Job, crane: Crane): Crane | null {
   // and put the dug-out boxes back where they came from
   for (const p of [...parked].reverse()) {
     legs.push({ kind: 'move', goal: slotToCell(p.slot), note: `recover from ${p.slot}` })
-    legs.push({ kind: 'hoist', containerId: p.id, slot: p.slot })
+    legs.push({ kind: 'hoist', containerId: p.id, slot: p.slot, slow: true })
     legs.push({ kind: 'move', goal: slotToCell(slot), note: `restack at ${slot}` })
-    legs.push({ kind: 'lower', containerId: p.id, slot })
+    legs.push({ kind: 'lower', containerId: p.id, slot, slow: true })
   }
 
   if (above.length) {
@@ -660,7 +766,9 @@ function stepCrane(d: Draft, input: Crane, dt: number): Crane {
   }
 
   if (crane.mode === 'hoisting' || crane.mode === 'lowering') {
-    crane.liftT += dt / LIFT_MINUTES
+    const leg0 = crane.legs[0]
+    const slow = leg0 && (leg0.kind === 'hoist' || leg0.kind === 'lower') && leg0.slow
+    crane.liftT += dt / (LIFT_MINUTES * (slow ? 2.2 : 1))
     crane.busyMinutes = crane.busyMinutes + dt
     if (crane.liftT < 1) return crane
     crane = completeLift(d, crane)
@@ -818,7 +926,7 @@ function advance(crane: Crane, dt: number): Crane {
     pathIndex: idx,
     segT: t,
     facing: dirOf(a, b),
-    pos: { x: ca.x + (cb.x - ca.x) * t, y: ca.y + (cb.y - ca.y) * t },
+    pos: reducedMotion ? ca : { x: ca.x + (cb.x - ca.x) * t, y: ca.y + (cb.y - ca.y) * t },
   }
 }
 
@@ -905,6 +1013,7 @@ function completeLift(d: Draft, crane: Crane): Crane {
     Object.entries(naiveStacks).map(([k, v]) => [k, v.filter((id) => id !== c.id)]),
   )
   log(d, 'good', `${c.id} loaded to ${c.vessel} for ${c.destination}.`, c.id)
+  if (d.rehandleChain.length) d.rehandleChain = []
   return { ...crane, mode: 'idle', liftT: 0, carrying: null, legs: rest }
 }
 

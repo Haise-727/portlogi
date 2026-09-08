@@ -235,7 +235,7 @@ export function resolveTraffic(req: TrafficRequest): TrafficDecision {
     seconds: Math.max(1, Math.round(waitCost * 60)),
     at: where,
     conflictWith: first.withCrane,
-    reason: `${craneId} held ${Math.max(1, Math.round(waitCost * 60))}s at ${where} — ${first.withCrane} ${first.theirLabel}.`,
+    reason: `${craneId} held ${Math.max(1, Math.round(waitCost * 60))}s at ${where} — ${first.withCrane} is in that cell, ${first.theirLabel}.`,
   }
 }
 

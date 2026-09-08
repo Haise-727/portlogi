@@ -10,6 +10,8 @@ type Props = {
   style: React.CSSProperties
   tier: number
   selected?: boolean
+  /** in the dig-out chain: this box only moves because it is in the way */
+  flagged?: boolean
   onClick?: () => void
   /** carried boxes skip the descend animation, they are already in motion */
   carried?: boolean
@@ -20,7 +22,16 @@ type Props = {
  * the cargo type. Tier 1 is offset up-left by the caller and gets a shadow, so
  * stacking reads instantly in plan view without a 3D engine.
  */
-export function ContainerBlock({ container, band, style, tier, selected, onClick, carried }: Props) {
+export function ContainerBlock({
+  container,
+  band,
+  style,
+  tier,
+  selected,
+  flagged,
+  onClick,
+  carried,
+}: Props) {
   const colour = BAND_COLOR[band]
   const Icon = TYPE_ICON[container.type]
 
@@ -41,7 +52,11 @@ export function ContainerBlock({ container, band, style, tier, selected, onClick
           tier > 0 || carried
             ? '0 6px 10px -3px rgba(0,0,0,0.65), 0 1px 0 0 rgba(255,255,255,0.05) inset'
             : '0 1px 0 0 rgba(255,255,255,0.04) inset',
-        outline: selected ? `1px solid var(--color-signal)` : 'none',
+        outline: selected
+          ? '1px solid var(--color-signal)'
+          : flagged
+            ? '1px solid var(--color-critical)'
+            : 'none',
         outlineOffset: 2,
       }}
       title={`${container.id} · ${container.destination} · ${container.weight}t`}

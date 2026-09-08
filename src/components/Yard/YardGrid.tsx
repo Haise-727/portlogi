@@ -7,6 +7,7 @@ import { GATE_CELL, GRID_H, GRID_W, QUAY_CELL, SLOT_IDS, isPoweredSlot } from '.
 import { priorityWith, useYard } from '../../store/yardStore'
 import { BAND_COLOR } from '../ui'
 import { CraneLayer } from './CraneLayer'
+import { PlanOverlay } from './PlanOverlay'
 import { RouteOverlay } from './RouteOverlay'
 import { Slot } from './Slot'
 
@@ -27,6 +28,8 @@ export function YardGrid() {
   // Bands shift slowly; re-deriving them every frame would re-render the grid
   // at 60fps for no visible change.
   const nowBucket = useYard((s) => Math.floor(s.now))
+  const pendingPlan = useYard((s) => s.pendingPlan)
+  const chainKey = useYard((s) => s.rehandleChain.join(','))
 
   const [flash, setFlash] = useState(false)
   const lastSeq = useRef(seq)
@@ -41,6 +44,7 @@ export function YardGrid() {
 
   const bandOf = (c: Container): PriorityBand => priorityWith(c, nowBucket, vessels).band
 
+  const chain = new Set(chainKey ? chainKey.split(',') : [])
   const candidateScores = new Map<string, number>()
   if (flash && allocation) {
     for (const c of allocation.candidates) candidateScores.set(c.slot, c.score)
@@ -81,6 +85,7 @@ export function YardGrid() {
                 chosen={flash && allocation?.best?.slot === slot}
                 candidateScore={candidateScores.get(slot) ?? null}
                 rejected={flash ? (allocation?.rejectionBySlot[slot]?.reason ?? null) : null}
+                chain={chain}
                 hovered={hoveredSlot === slot}
                 onHover={hoverSlot}
                 onSelect={select}
@@ -89,6 +94,7 @@ export function YardGrid() {
           )
         })}
 
+        <PlanOverlay plan={pendingPlan} />
         <RouteStage />
         <CraneStage bandOf={bandOf} />
 
@@ -98,7 +104,7 @@ export function YardGrid() {
               slot={hoveredSlot}
               stack={stacks[hoveredSlot].map((id) => containers[id]).filter(Boolean)}
               bandOf={bandOf}
-              rejection={allocation?.rejectionBySlot[hoveredSlot]?.reason ?? null}
+              rejection={flash ? (allocation?.rejectionBySlot[hoveredSlot]?.reason ?? null) : null}
               now={nowBucket}
             />
           )}
@@ -180,8 +186,8 @@ function GateApron({
       </div>
 
       <div
-        className="absolute flex -translate-y-1/2 items-center gap-[3px]"
-        style={{ left: '1.5%', top: `${(g.y / YARD_H) * 100}%` }}
+        className="absolute flex -translate-y-1/2 flex-row-reverse items-center gap-[3px]"
+        style={{ right: `${100 - (g.x / YARD_W) * 100 + 4.5}%`, top: `${(g.y / YARD_H) * 100}%` }}
       >
         <AnimatePresence mode="popLayout">
           {queue.slice(0, 5).map((c) => (
