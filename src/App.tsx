@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useState } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useState } from 'react'
 import { MotionConfig } from 'motion/react'
-import { ComparisonMode } from './components/Comparison/ComparisonMode'
 import { ControlPanel, RetrievalQueue } from './components/Panels/ControlPanel'
 import { ContainerDetail } from './components/Panels/ContainerDetail'
 import { EventLog } from './components/Panels/EventLog'
@@ -12,6 +11,15 @@ import { Legend } from './components/Yard/Legend'
 import { YardGrid } from './components/Yard/YardGrid'
 import { useShortcuts } from './hooks/useShortcuts'
 import { clock } from './store/yardStore'
+
+/**
+ * Recharts is only ever on screen inside comparison mode, and it is two thirds
+ * of the bundle. Split it out so the yard - the thing that has to be up
+ * instantly on a strange machine - is not waiting on a charting library.
+ */
+const ComparisonMode = lazy(() =>
+  import('./components/Comparison/ComparisonMode').then((m) => ({ default: m.ComparisonMode })),
+)
 
 /**
  * Three-zone console: controls on the left, the yard in the middle, the
@@ -53,8 +61,31 @@ export default function App() {
           <EventLog />
         </aside>
       </div>
-      {comparing && <ComparisonMode onClose={() => setComparing(false)} />}
+      {comparing && (
+        <Suspense fallback={<ComparisonLoading />}>
+          <ComparisonMode onClose={() => setComparing(false)} />
+        </Suspense>
+      )}
     </div>
     </MotionConfig>
+  )
+}
+
+function ComparisonLoading() {
+  return (
+    <div
+      className="fixed inset-0 z-50 grid place-items-center"
+      style={{ background: 'color-mix(in srgb, var(--color-void) 88%, transparent)' }}
+    >
+      <div className="w-full max-w-[1060px] border border-line-hi bg-panel p-3">
+        <div className="h-[13px] w-[220px] animate-pulse bg-line" />
+        <div className="mt-3 grid grid-cols-3 gap-3">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="h-[54px] animate-pulse bg-line" />
+          ))}
+        </div>
+        <div className="mt-3 h-[240px] animate-pulse bg-line" />
+      </div>
+    </div>
   )
 }

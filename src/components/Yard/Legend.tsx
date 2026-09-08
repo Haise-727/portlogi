@@ -61,6 +61,17 @@ export function Legend() {
         <span className="text-[10px] text-ink-2">Crane route</span>
       </span>
 
+      <span className="flex items-center gap-[5px]">
+        <span
+          className="h-[10px] w-[14px] border border-line"
+          style={{
+            background:
+              'repeating-linear-gradient(45deg, color-mix(in srgb, var(--color-reject) 40%, var(--color-raise)) 0 3px, var(--color-raise) 3px 6px)',
+          }}
+        />
+        <span className="text-[10px] text-ink-2">Illegal for this box — hover for the rule</span>
+      </span>
+
       <span className="ml-auto text-[10px] text-ink-3">
         Tier 1 sits up-left of tier 0. Click a box for its file.
       </span>

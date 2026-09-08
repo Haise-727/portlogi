@@ -152,6 +152,7 @@ const ARRIVAL_INTERVAL = 3.2
 /** A stored box this close to its ETD is called forward automatically. */
 const CALL_FORWARD = 22
 const SEED = 20260908
+const NO_SLOT_HOLD = 'No legal slot — waiting'
 
 /**
  * With reduced motion asked for, cranes step cell to cell instead of gliding.
@@ -175,6 +176,12 @@ let arrivalTimer = 0
 let naiveStacks: Record<string, string[]> = {}
 /** Containers that have been set down at least once, so restacks are not counted twice. */
 const everStored = new Set<string>()
+/**
+ * When the yard has no legal slot for a box, retrying every frame achieves
+ * nothing except two hundred identical log lines. Back off and say it once.
+ */
+const placementBackoff = new Map<string, number>()
+const PLACEMENT_RETRY = 4 // sim-minutes
 
 function freshCranes(): Crane[] {
   return CRANE_IDS.map((id, i) => ({
@@ -213,6 +220,7 @@ function initialState(): YardState {
   arrivalTimer = 0
   naiveStacks = emptyStacks()
   everStored.clear()
+  placementBackoff.clear()
   return {
     now: 0,
     running: true,
@@ -376,7 +384,11 @@ export const useYard = create<YardState & YardActions>((set, get) => ({
         arrivalTimer += dt
         if (arrivalTimer >= ARRIVAL_INTERVAL) {
           arrivalTimer = 0
-          if (d.gateQueue.length < 4 && freeCapacity(d) > 0) admit(d)
+          // Back-pressure: raw capacity is not legal capacity. Reefer power,
+          // hazmat segregation and the weight rule all shrink what is actually
+          // usable, so filling to the brim gridlocks the yard with boxes that
+          // have nowhere legal to go. Stop admitting well short of full.
+          if (d.gateQueue.length < 3 && freeCapacity(d) >= 4) admit(d)
         }
         callForward(d)
       }
@@ -575,6 +587,29 @@ function callForward(d: Draft): void {
     d.jobs = [...d.jobs, { kind: 'retrieve', containerId: id, priority: p.score, createdAt: d.now }]
     log(d, 'warn', `${c.vessel} calling ${c.id} forward — ETD in ${Math.round(c.etd - d.now)} min.`, id)
   }
+
+  // Congestion drain. Without this the yard can sit full with nothing yet due,
+  // which stalls the whole simulation: no arrivals (back-pressure) and no
+  // departures (nothing near its ETD).
+  let used = 0
+  for (const slot of SLOT_IDS) used += d.stacks[slot].length
+  const occ = used / (SLOT_IDS.length * yardConfig.tiers)
+  if (occ <= 0.7) return
+  if (d.jobs.filter((j) => j.kind === 'retrieve').length >= 2) return
+
+  const next = Object.values(d.containers)
+    .filter((c) => c.status === 'stored' && !busy.has(c.id) && !d.jobs.some((j) => j.containerId === c.id))
+    .map((c) => ({ c, p: priorityOf(d, c) }))
+    .sort((a, b) => b.p.score - a.p.score || a.c.etd - b.c.etd)[0]
+  if (!next) return
+
+  d.jobs = [...d.jobs, { kind: 'retrieve', containerId: next.c.id, priority: next.p.score, createdAt: d.now }]
+  log(
+    d,
+    'warn',
+    `Yard at ${Math.round(occ * 100)}% — working ${next.c.id} forward to free space.`,
+    next.c.id,
+  )
 }
 
 /* ------------------------------------------------------------------ *
@@ -586,11 +621,22 @@ function dispatch(d: Draft): void {
   const idle = d.cranes.filter((c) => c.mode === 'idle' && c.legs.length === 0 && !c.carrying)
   if (idle.length === 0) return
 
-  const queue = [...d.jobs].sort((a, b) => b.priority - a.priority || a.createdAt - b.createdAt)
+  let used = 0
+  for (const slot of SLOT_IDS) used += d.stacks[slot].length
+  const filling = used / (SLOT_IDS.length * yardConfig.tiers) > 0.65
+
+  const queue = [...d.jobs].sort((a, b) => {
+    // Once the yard is filling, moving boxes out beats moving more boxes in:
+    // otherwise arrivals win on priority forever and the yard never drains.
+    if (filling && a.kind !== b.kind) return a.kind === 'retrieve' ? -1 : 1
+    return b.priority - a.priority || a.createdAt - b.createdAt
+  })
   const taken: string[] = []
 
   for (const crane of idle) {
-    const job = queue.find((j) => !taken.includes(j.containerId))
+    const job = queue.find(
+      (j) => !taken.includes(j.containerId) && (placementBackoff.get(j.containerId) ?? 0) <= d.now,
+    )
     if (!job) break
     const built = job.kind === 'place' ? buildPlace(d, job, crane) : buildRetrieve(d, job, crane)
     if (!built) continue
@@ -630,14 +676,24 @@ function buildPlace(d: Draft, job: Job, crane: Crane): Crane | null {
   if (!container) return null
 
   const result = allocate(container, snapshotOf(d), GATE_CELL)
-  d.lastAllocation = result
-  d.allocationSeq = d.allocationSeq + 1
 
   const chosen = firstFreeCandidate(d, result.candidates, crane)
   if (!chosen) {
-    log(d, 'critical', `No legal position for ${container.id} — every slot rejected.`, container.id)
+    if ((placementBackoff.get(container.id) ?? 0) <= d.now) {
+      log(
+        d,
+        'critical',
+        `No legal position for ${container.id} — every slot rejected. Holding at the gate until the yard drains.`,
+        container.id,
+      )
+    }
+    placementBackoff.set(container.id, d.now + PLACEMENT_RETRY)
     return null
   }
+  placementBackoff.delete(container.id)
+
+  d.lastAllocation = result
+  d.allocationSeq = d.allocationSeq + 1
 
   const { slot, tier, score, rehandles } = chosen
   const runnerUp = result.candidates.find((c) => c.slot !== slot)
@@ -978,11 +1034,23 @@ function completeLift(d: Draft, crane: Crane): Crane {
           ],
         }
       }
-      log(d, 'critical', `${box.id} returned to the gate — no legal position left in the yard.`, box.id)
-      patchContainer(d, leg.containerId, { status: 'inbound', slot: null, tier: null })
-      d.gateQueue = [...d.gateQueue, leg.containerId]
-      d.jobs = [...d.jobs, { kind: 'place', containerId: leg.containerId, priority: 0, createdAt: d.now }]
-      return { ...crane, mode: 'idle', liftT: 0, carrying: null, legs: rest }
+      // Nowhere legal to set it down. Keep hold of it and try again shortly
+      // rather than bouncing it back to the gate, which would loop forever.
+      if (crane.holdReason !== NO_SLOT_HOLD) {
+        log(
+          d,
+          'critical',
+          `${crane.id} is holding ${box.id} — no legal slot free. Waiting for the yard to drain.`,
+          box.id,
+        )
+      }
+      return {
+        ...crane,
+        mode: 'held',
+        liftT: 0,
+        holdUntil: d.now + PLACEMENT_RETRY,
+        holdReason: NO_SLOT_HOLD,
+      }
     }
 
     // Restacking a dug-out box is not a new arrival, so only count first storage.
