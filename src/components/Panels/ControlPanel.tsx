@@ -1,7 +1,6 @@
 import { Boxes, Pause, Play, RotateCcw, Radio, ScanLine, Search } from 'lucide-react'
 import { shortId } from '../../lib/generator'
 import type { Container } from '../../lib/types'
-import { SLOT_IDS } from '../../lib/yardConfig'
 import { assignedKey, priorityWith, useYard } from '../../store/yardStore'
 import { BAND_COLOR } from '../ui'
 
@@ -216,5 +215,3 @@ export function PanelHeading({ title, note }: { title: string; note?: string }) 
     </div>
   )
 }
-
-export { SLOT_IDS }

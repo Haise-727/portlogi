@@ -1,4 +1,4 @@
-import { Activity, Pause, Play } from 'lucide-react'
+import { Activity, Pause } from 'lucide-react'
 import { formatClock } from '../../lib/simulation'
 import { SLOT_IDS, yardConfig } from '../../lib/yardConfig'
 import { useYard } from '../../store/yardStore'
@@ -53,5 +53,3 @@ function Readout({ label, value, tint }: { label: string; value: string; tint?: 
     </span>
   )
 }
-
-export { Play }

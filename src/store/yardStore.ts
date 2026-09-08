@@ -4,7 +4,6 @@ import {
   allocateNaive,
   blockedCells,
   checkConstraints,
-  countRehandles,
   emptySnapshot,
   type AllocationResult,
   type Candidate,
@@ -22,7 +21,7 @@ import {
   resolveTraffic,
 } from '../lib/traffic'
 import type { Cell, Container, EventSeverity, Tier, YardEvent } from '../lib/types'
-import { GATE_CELL, QUAY_CELL, SLOT_IDS, cellToSlot, slotToCell, yardConfig } from '../lib/yardConfig'
+import { GATE_CELL, QUAY_CELL, SLOT_IDS, slotToCell, yardConfig } from '../lib/yardConfig'
 import { cellCenter } from '../lib/geometry'
 
 /* ------------------------------------------------------------------ *
@@ -181,6 +180,8 @@ const everStored = new Set<string>()
  * nothing except two hundred identical log lines. Back off and say it once.
  */
 const placementBackoff = new Map<string, number>()
+/** Containers already reported as unplaceable, so the log says it once. */
+const warnedNoSlot = new Set<string>()
 const PLACEMENT_RETRY = 4 // sim-minutes
 
 function freshCranes(): Crane[] {
@@ -221,6 +222,7 @@ function initialState(): YardState {
   naiveStacks = emptyStacks()
   everStored.clear()
   placementBackoff.clear()
+  warnedNoSlot.clear()
   return {
     now: 0,
     running: true,
@@ -388,7 +390,12 @@ export const useYard = create<YardState & YardActions>((set, get) => ({
           // hazmat segregation and the weight rule all shrink what is actually
           // usable, so filling to the brim gridlocks the yard with boxes that
           // have nowhere legal to go. Stop admitting well short of full.
-          if (d.gateQueue.length < 3 && freeCapacity(d) >= 4) admit(d)
+          // Ground slots are the binding constraint, not raw capacity: with a
+          // strict weight rule a heavy box can only go on bare ground, so once
+          // every stack is started the gate can jam on one container.
+          const groundFree = SLOT_IDS.filter((s) => d.stacks[s].length === 0).length
+          const roomToWork = groundFree > 0 || d.gateQueue.length === 0
+          if (d.gateQueue.length < 3 && freeCapacity(d) >= 4 && roomToWork) admit(d)
         }
         callForward(d)
       }
@@ -623,7 +630,7 @@ function dispatch(d: Draft): void {
 
   let used = 0
   for (const slot of SLOT_IDS) used += d.stacks[slot].length
-  const filling = used / (SLOT_IDS.length * yardConfig.tiers) > 0.65
+  const filling = used / (SLOT_IDS.length * yardConfig.tiers) > 0.6
 
   const queue = [...d.jobs].sort((a, b) => {
     // Once the yard is filling, moving boxes out beats moving more boxes in:
@@ -679,11 +686,13 @@ function buildPlace(d: Draft, job: Job, crane: Crane): Crane | null {
 
   const chosen = firstFreeCandidate(d, result.candidates, crane)
   if (!chosen) {
-    if ((placementBackoff.get(container.id) ?? 0) <= d.now) {
+    if (!warnedNoSlot.has(container.id)) {
+      warnedNoSlot.add(container.id)
+      const why = result.rejected[0]?.reason ?? 'no slot satisfies the constraints'
       log(
         d,
         'critical',
-        `No legal position for ${container.id} — every slot rejected. Holding at the gate until the yard drains.`,
+        `${container.id} held at the gate — every slot rejected (${why}). It will go in as soon as the yard drains.`,
         container.id,
       )
     }
@@ -691,6 +700,7 @@ function buildPlace(d: Draft, job: Job, crane: Crane): Crane | null {
     return null
   }
   placementBackoff.delete(container.id)
+  warnedNoSlot.delete(container.id)
 
   d.lastAllocation = result
   d.allocationSeq = d.allocationSeq + 1
@@ -1133,14 +1143,6 @@ export const clock = new SimClock((dt) => useYard.getState().tick(dt))
  * Selectors
  * ------------------------------------------------------------------ */
 
-export function yardSnapshot(s: YardState): YardSnapshot {
-  const snap = emptySnapshot()
-  for (const slot of SLOT_IDS) {
-    snap[slot] = s.stacks[slot].map((id) => s.containers[id]).filter(Boolean)
-  }
-  return snap
-}
-
 /** The one place the UI computes a priority, so vessel rotation is applied everywhere. */
 export function priorityWith(
   c: Container,
@@ -1149,11 +1151,6 @@ export function priorityWith(
 ): PriorityResult {
   const vessel = vessels.find((v) => v.name === c.vessel)
   return computePriority(c, now, vessel ? nextCutoff(vessel, now) : undefined)
-}
-
-export function priorityFor(s: YardState, c: Container): PriorityResult {
-  const vessel = s.vessels.find((v) => v.name === c.vessel)
-  return computePriority(c, s.now, vessel ? nextCutoff(vessel, s.now) : undefined)
 }
 
 /**
@@ -1169,14 +1166,3 @@ export function assignedKey(s: YardState): string {
   return ids.join(',')
 }
 
-export function occupancy(s: YardState): number {
-  let used = 0
-  for (const slot of SLOT_IDS) used += s.stacks[slot].length
-  return used / (SLOT_IDS.length * yardConfig.tiers)
-}
-
-export function rehandlesIfPlaced(s: YardState, c: Container, slot: string): number {
-  return countRehandles(c, s.stacks[slot].map((id) => s.containers[id]).filter(Boolean))
-}
-
-export { cellToSlot, SLOT_IDS }
