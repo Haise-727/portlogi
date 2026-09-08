@@ -20,6 +20,12 @@
   --color-signal: #2fa9bc;
   --color-signal-dim: #1b4d56;
 
+  /* comparison-mode series: validated for CVD separation and contrast against
+     the dark chart surface, and deliberately outside the priority palette so a
+     line on the chart is never mistaken for a priority band */
+  --color-run-optimised: #00a7be;
+  --color-run-naive: #c2557e;
+
   /* priority bands — the only other colours in the system */
   --color-critical: #e0503c;
   --color-high: #de9a32;
@@ -48,7 +54,6 @@
   .font-mono,
   code {
     font-variant-numeric: tabular-nums;
-    font-feature-settings: 'ss01';
   }
 
   ::-webkit-scrollbar {

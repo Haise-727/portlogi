@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { ComparisonMode } from './components/Comparison/ComparisonMode'
 import { ControlPanel, RetrievalQueue } from './components/Panels/ControlPanel'
 import { ContainerDetail } from './components/Panels/ContainerDetail'
 import { EventLog } from './components/Panels/EventLog'
@@ -43,7 +44,7 @@ export default function App() {
           <EventLog />
         </aside>
       </div>
-      {comparing && null}
+      {comparing && <ComparisonMode onClose={() => setComparing(false)} />}
     </div>
   )
 }
