@@ -33,8 +33,10 @@ none at all.
                 QUAY (exit, berth 3)
 ```
 
-Twelve ground slots, two tiers, twenty-four boxes. Cranes run the aisles between rows and the
-driveways down each side. Every dimension lives in [`src/lib/yardConfig.ts`](src/lib/yardConfig.ts) —
+Twelve ground slots, two tiers, twenty-four boxes, plus two transfer pads on the quay apron
+for temporary set-downs. Lift-AGVs — automated yard trucks with an onboard spreader — run the
+aisles between rows and the driveways down each side; they carry horizontally and lift on the
+spot, which is why one vehicle type covers both moving and stacking. Every dimension lives in [`src/lib/yardConfig.ts`](src/lib/yardConfig.ts) —
 change `rows`, `cols` or `tiers` there and the grid, the pathfinding graph and the rendered
 layout all follow.
 
@@ -47,8 +49,8 @@ tested on its own. Every one returns a decision **and** the reasoning behind it.
 |---|---|---|
 | [`allocator.ts`](src/lib/allocator.ts) | Which slot and tier an arriving box goes to | Five weighted terms, each with its own sentence, plus the rule that rejected every illegal slot |
 | [`priority.ts`](src/lib/priority.ts) | Which boxes get worked first | Urgency, handling class, dwell and vessel cutoff, and which of the four drove the band |
-| [`pathfinder.ts`](src/lib/pathfinder.ts) | How a crane gets there | A\* path, its cost, its turns, and the nodes the search expanded |
-| [`traffic.ts`](src/lib/traffic.ts) | Who moves when two cranes want the same cell | The reservation that clashed, whose cargo outranked whose, and whether waiting or detouring was cheaper |
+| [`pathfinder.ts`](src/lib/pathfinder.ts) | How an AGV gets there | A\* path, its cost, its turns, and the nodes the search expanded |
+| [`traffic.ts`](src/lib/traffic.ts) | Who moves when two AGVs want the same cell | The reservation that clashed, whose cargo outranked whose, and whether waiting or detouring was cheaper |
 
 ### Best-position scoring
 
@@ -56,7 +58,7 @@ tested on its own. Every one returns a decision **and** the reasoning behind it.
 Each term is normalised to 0–1 before weighting so the bars in the inspector are comparable.
 
 **Rehandle risk is the core idea**: putting a box that leaves at t=100 on top of one that
-leaves at t=50 guarantees a wasted crane cycle later. **Aisle access** is measured rather than
+leaves at t=50 guarantees a wasted AGV cycle later. **Aisle access** is measured rather than
 assumed — the router is re-run over the whole yard with the candidate cell treated as solid,
 so "this slot walls off the aisle" is a number.
 
@@ -83,6 +85,14 @@ result.
   the bottom edge of every box, which the box above never covers.
 - **Hatched slots** are illegal for the box being placed; hover for the rule.
 - **The dashed cyan line is the real A\*** route, not a straight line between two points.
+- **Boxes with a striped red edge are overdue** — their departure has already passed. They are
+  forced to the critical band whatever the weighted score says.
+- **T1 and T2 on the quay apron are transfer pads**, where a box goes while whatever it was
+  sitting on top of is fetched.
+
+The activity log is plain by default, one sentence per event. The **detail** switch in its
+header adds the scores, costs and rules underneath each line, plus the vehicle-level traffic
+chatter that is hidden the rest of the time.
 
 ### Presenter keys
 
@@ -93,9 +103,9 @@ result.
 ```
 src/
   lib/          algorithms and the simulation clock — no React anywhere
-  store/        Zustand: the clock, the job dispatcher, crane execution
+  store/        Zustand: the clock, the job dispatcher, AGV execution
   components/
-    Yard/       grid, slots, containers, cranes, route and plan overlays
+    Yard/       grid, slots, containers, AGVs, route and plan overlays
     Panels/     controls, metrics, inspector, event log, container file
     Comparison/ the headline result (lazy-loaded; Recharts is heavy)
 ```
@@ -106,7 +116,7 @@ React + TypeScript + Vite, Tailwind v4, Motion for animation, Zustand for simula
 Recharts in comparison mode only, lucide-react for icons.
 
 The simulation clock is a `requestAnimationFrame` loop with a speed multiplier rather than
-`setInterval`: it stays smooth, it drives the crane interpolation off the real frame delta, and
+`setInterval`: it stays smooth, it drives the AGV interpolation off the real frame delta, and
 it pauses cleanly with the tab instead of banking up a backlog of missed intervals.
 
 Design rationale, including the critique pass, is in [DESIGN.md](DESIGN.md).

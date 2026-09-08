@@ -3,45 +3,45 @@ import type { Cell } from './types'
 import { cellToSlot } from './yardConfig'
 
 /**
- * Traffic control for multiple cranes on one grid.
+ * Traffic control for multiple AGVs on one grid.
  *
- * The cranes share aisles, so "shortest path" is not enough — a path is only
- * usable if nobody else is standing in it at the moment you arrive. Each crane
+ * The AGVs share aisles, so "shortest path" is not enough — a path is only
+ * usable if nobody else is standing in it at the moment you arrive. Each AGV
  * reserves the cells of its route for the time window it will occupy them; a
  * new route is checked against those windows before it starts. On a clash the
- * lower-priority crane gives way, either by waiting for the window to clear or
+ * lower-priority AGV gives way, either by waiting for the window to clear or
  * by taking a detour if the detour is cheaper than the wait.
  *
  * Every outcome carries a sentence for the event log. Traffic control that is
  * not narrated looks identical to traffic control that does not exist.
  */
 
-/** Sim-minutes for a crane to traverse one grid cell. */
+/** Sim-minutes for an AGV to traverse one grid cell. */
 export const MINUTES_PER_CELL = 0.15
 /** Sim-minutes to hoist or lower a box. */
 export const LIFT_MINUTES = 0.45
-/** Safety margin held behind a crane before another may enter the cell. */
+/** Safety margin held behind an AGV before another may enter the cell. */
 export const CLEARANCE = MINUTES_PER_CELL * 0.6
-/** Penalty applied to the crane forced to give way in a deadlock. */
+/** Penalty applied to the AGV forced to give way in a deadlock. */
 export const YIELD_PENALTY = MINUTES_PER_CELL * 4
 
 export type TimedCell = { key: string; cell: Cell; enter: number; exit: number }
 
-export type Reservation = TimedCell & { craneId: string; priority: number; label: string }
+export type Reservation = TimedCell & { agvId: string; priority: number; label: string }
 
 export type Conflict = {
   key: string
   slot: string | null
   cell: Cell
-  withCrane: string
+  withAgv: string
   theirPriority: number
-  /** what the other crane is doing, so the log can say why we gave way */
+  /** what the other AGV is doing, so the log can say why we gave way */
   theirLabel: string
   from: number
   to: number
 }
 
-/** Lay a route out in time: when the crane is in each cell, and until when. */
+/** Lay a route out in time: when the AGV is in each cell, and until when. */
 export function schedulePath(
   path: Cell[],
   startAt: number,
@@ -63,18 +63,18 @@ export function schedulePath(
 export class ReservationTable {
   private byCell = new Map<string, Reservation[]>()
 
-  reserve(craneId: string, priority: number, timed: TimedCell[], label: string): void {
-    this.release(craneId)
+  reserve(agvId: string, priority: number, timed: TimedCell[], label: string): void {
+    this.release(agvId)
     for (const t of timed) {
       const list = this.byCell.get(t.key) ?? []
-      list.push({ ...t, craneId, priority, label })
+      list.push({ ...t, agvId, priority, label })
       this.byCell.set(t.key, list)
     }
   }
 
-  release(craneId: string): void {
+  release(agvId: string): void {
     for (const [key, list] of this.byCell) {
-      const kept = list.filter((r) => r.craneId !== craneId)
+      const kept = list.filter((r) => r.agvId !== agvId)
       if (kept.length) this.byCell.set(key, kept)
       else this.byCell.delete(key)
     }
@@ -89,17 +89,17 @@ export class ReservationTable {
     }
   }
 
-  conflicts(craneId: string, timed: TimedCell[]): Conflict[] {
+  conflicts(agvId: string, timed: TimedCell[]): Conflict[] {
     const out: Conflict[] = []
     for (const t of timed) {
       for (const r of this.byCell.get(t.key) ?? []) {
-        if (r.craneId === craneId) continue
+        if (r.agvId === agvId) continue
         if (overlaps(t, r)) {
           out.push({
             key: t.key,
             slot: cellToSlot(t.cell),
             cell: t.cell,
-            withCrane: r.craneId,
+            withAgv: r.agvId,
             theirPriority: r.priority,
             theirLabel: r.label,
             from: Math.max(t.enter, r.enter),
@@ -112,11 +112,11 @@ export class ReservationTable {
   }
 
   /** Earliest departure time at which this route is completely clear. */
-  clearAt(craneId: string, path: Cell[], startAt: number, dwellAtEnd: number): number {
+  clearAt(agvId: string, path: Cell[], startAt: number, dwellAtEnd: number): number {
     let t = startAt
     for (let attempt = 0; attempt < 40; attempt++) {
       const timed = schedulePath(path, t, MINUTES_PER_CELL, dwellAtEnd)
-      const cs = this.conflicts(craneId, timed)
+      const cs = this.conflicts(agvId, timed)
       if (cs.length === 0) return t
       // Jump to just after the blocking window rather than creeping forward.
       const worst = cs.reduce((a, b) => (b.to > a.to ? b : a))
@@ -131,10 +131,10 @@ export class ReservationTable {
     return [...this.byCell.values()].flat()
   }
 
-  cellsHeldBy(craneId: string): string[] {
+  cellsHeldBy(agvId: string): string[] {
     const out: string[] = []
     for (const [key, list] of this.byCell) {
-      if (list.some((r) => r.craneId === craneId)) out.push(key)
+      if (list.some((r) => r.agvId === agvId)) out.push(key)
     }
     return out
   }
@@ -164,7 +164,7 @@ export type TrafficDecision =
     }
 
 export type TrafficRequest = {
-  craneId: string
+  agvId: string
   priority: number
   /** human phrase for the log, e.g. "carrying critical-priority TUTX 4410" */
   cargoLabel: string
@@ -178,14 +178,14 @@ export type TrafficRequest = {
 }
 
 /**
- * Decide whether a crane may start now, must wait, or should go around.
- * Priority is the tie-breaker in every case: a crane carrying critical cargo
+ * Decide whether an AGV may start now, must wait, or should go around.
+ * Priority is the tie-breaker in every case: an AGV carrying critical cargo
  * is not asked to give way to a routine move.
  */
 export function resolveTraffic(req: TrafficRequest): TrafficDecision {
-  const { craneId, priority, path, startAt, dwellAtEnd, table } = req
+  const { agvId, priority, path, startAt, dwellAtEnd, table } = req
   const timed = schedulePath(path.path, startAt, MINUTES_PER_CELL, dwellAtEnd)
-  const conflicts = table.conflicts(craneId, timed)
+  const conflicts = table.conflicts(agvId, timed)
 
   if (conflicts.length === 0) {
     return { action: 'proceed', timed, path: path.path, preempts: [] }
@@ -194,19 +194,19 @@ export function resolveTraffic(req: TrafficRequest): TrafficDecision {
   const first = conflicts[0]
   const where = first.slot ?? 'the aisle'
 
-  // We outrank the other crane: it gives way, we keep our slot in the schedule.
+  // We outrank the other AGV: it gives way, we keep our slot in the schedule.
   if (priority > first.theirPriority) {
     return {
       action: 'proceed',
       timed,
       path: path.path,
-      preempts: [...new Set(conflicts.filter((c) => c.theirPriority < priority).map((c) => c.withCrane))],
-      note: `${craneId} takes right of way at ${where} — ${req.cargoLabel} outranks ${first.withCrane} ${first.theirLabel}.`,
+      preempts: [...new Set(conflicts.filter((c) => c.theirPriority < priority).map((c) => c.withAgv))],
+      note: `${agvId} takes right of way at ${where} — ${req.cargoLabel} outranks ${first.withAgv} ${first.theirLabel}.`,
     }
   }
 
   // Otherwise: wait, or go around if going around is cheaper than waiting.
-  const clear = table.clearAt(craneId, path.path, startAt, dwellAtEnd)
+  const clear = table.clearAt(agvId, path.path, startAt, dwellAtEnd)
   const waitCost = clear - startAt
 
   const detourBlocked = new Set(req.blocked)
@@ -215,16 +215,16 @@ export function resolveTraffic(req: TrafficRequest): TrafficDecision {
 
   if (detour.ok) {
     const detourTimed = schedulePath(detour.path, startAt, MINUTES_PER_CELL, dwellAtEnd)
-    const stillClashes = table.conflicts(craneId, detourTimed).length > 0
+    const stillClashes = table.conflicts(agvId, detourTimed).length > 0
     const extra = (detour.cost - path.cost) * MINUTES_PER_CELL
     if (!stillClashes && extra < waitCost) {
       return {
         action: 'reroute',
         path: detour.path,
         timed: detourTimed,
-        conflictWith: first.withCrane,
+        conflictWith: first.withAgv,
         extraCost: round(extra * 60),
-        reason: `${craneId} routes around ${where} — a ${Math.round(extra * 60)}s detour beats a ${Math.round(waitCost * 60)}s wait behind ${first.withCrane}.`,
+        reason: `${agvId} routes around ${where} — a ${Math.round(extra * 60)}s detour beats a ${Math.round(waitCost * 60)}s wait behind ${first.withAgv}.`,
       }
     }
   }
@@ -234,13 +234,13 @@ export function resolveTraffic(req: TrafficRequest): TrafficDecision {
     until: clear,
     seconds: Math.max(1, Math.round(waitCost * 60)),
     at: where,
-    conflictWith: first.withCrane,
-    reason: `${craneId} held ${Math.max(1, Math.round(waitCost * 60))}s at ${where} — ${first.withCrane} is in that cell, ${first.theirLabel}.`,
+    conflictWith: first.withAgv,
+    reason: `${agvId} held ${Math.max(1, Math.round(waitCost * 60))}s at ${where} — ${first.withAgv} is in that cell, ${first.theirLabel}.`,
   }
 }
 
 /**
- * Deadlock: each crane in a cycle is waiting on the next. Nobody moves without
+ * Deadlock: each AGV in a cycle is waiting on the next. Nobody moves without
  * an intervention, so the lowest-priority member is forced to give way.
  */
 export function detectDeadlock(

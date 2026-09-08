@@ -8,7 +8,7 @@ type Props = {
 }
 
 /**
- * The route the crane is actually driving, drawn from the A* output rather
+ * The route the AGV is actually driving, drawn from the A* output rather
  * than a straight line between two points. The path is the demonstration:
  * without it, "pathfinding" is a claim on a slide.
  */

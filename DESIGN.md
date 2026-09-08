@@ -67,7 +67,7 @@ Three zones, asymmetric, full viewport height, no page scroll:
    288px              1fr                       384px
 ```
 
-The yard owns the centre at a fixed aspect ratio so crane, route overlay and slots share one
+The yard owns the centre at a fixed aspect ratio so AGV, route overlay and slots share one
 coordinate space. Panels are separated by 1px rules, not by gaps, shadows or rounded cards.
 
 ## Principles

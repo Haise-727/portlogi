@@ -6,12 +6,12 @@ import { GRID_H, GRID_W, cellKey, cellToSlot, inBounds } from './yardConfig'
  *
  * Written by hand rather than pulled from a library: it is ~80 lines, it has to
  * be explainable to an examiner line by line, and it needs two things a generic
- * implementation does not give us — a turn penalty (slewing a gantry is slow, so
- * a straight detour often beats a zig-zag) and the set of explored nodes, so the
+ * implementation does not give us — a turn penalty (turning a
+ * loaded vehicle is slow, so a straight detour often beats a zig-zag) and the set of explored nodes, so the
  * search itself can be drawn on screen.
  */
 
-/** N, E, S, W. Cranes do not travel diagonally. */
+/** N, E, S, W. Agvs do not travel diagonally. */
 const DIRS: Cell[] = [
   { x: 0, y: -1 },
   { x: 1, y: 0 },
@@ -22,7 +22,7 @@ export const DIR_NAMES = ['north', 'east', 'south', 'west']
 
 /** Cost of one cell of travel. */
 export const STEP_COST = 1
-/** Extra cost of a 90-degree turn — a gantry slews far slower than it runs. */
+/** Extra cost of a 90-degree turn — a loaded AGV corners far slower than it runs. */
 export const TURN_COST = 0.6
 
 export type PathOk = {
@@ -45,9 +45,9 @@ export type PathFail = {
 export type PathResult = PathOk | PathFail
 
 export type PathOptions = {
-  /** cells the crane may not travel through (occupied stacks) */
+  /** cells the AGV may not travel through (occupied stacks) */
   blocked?: ReadonlySet<string>
-  /** direction the crane is already facing, as a DIRS index; omit if stationary */
+  /** direction the AGV is already facing, as a DIRS index; omit if stationary */
   facing?: number | null
   turnCost?: number
 }
@@ -103,8 +103,8 @@ export function findPath(start: Cell, goal: Cell, opts: PathOptions = {}): PathR
       if (nx < 0 || ny < 0 || nx >= GRID_W || ny >= GRID_H) continue
 
       const key = `${nx},${ny}`
-      // The destination stack is enterable — a gantry straddles it to lift or
-      // lower. Any other occupied stack is solid.
+      // The destination stack is enterable — the AGV pulls alongside it to lift
+      // or lower. Any other occupied stack is solid.
       if (blocked.has(key) && key !== goalKey) continue
 
       const turned = node.dir !== -1 && node.dir !== d

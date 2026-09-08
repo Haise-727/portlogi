@@ -101,7 +101,7 @@ export function ComparisonMode({ onClose }: { onClose: () => void }) {
                 <span className="font-mono text-[13px] tabular-nums text-ink-2">−{pctCut}%</span>
               </div>
               <p className="mt-[6px] text-[10px] leading-snug text-ink-3">
-                Each one is a full crane cycle spent moving a box that nobody asked for.
+                Each one is a whole vehicle trip spent moving a box nobody asked for.
               </p>
             </div>
           </div>
@@ -285,7 +285,7 @@ function Table({ result }: { result: ComparisonResult }) {
       better: 'lower',
     },
     {
-      label: 'Loaded crane travel (A* cost)',
+      label: 'Loaded AGV travel (A* cost)',
       naive: result.naive.travel.toFixed(1),
       optimised: result.optimised.travel.toFixed(1),
       better: 'lower',

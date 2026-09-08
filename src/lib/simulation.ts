@@ -3,13 +3,13 @@
  *
  * requestAnimationFrame rather than setInterval: the tick is tied to the
  * display, it pauses by itself when the tab is hidden instead of queueing up a
- * backlog of missed intervals, and the frame delta is what drives the crane
+ * backlog of missed intervals, and the frame delta is what drives the AGV
  * interpolation, so motion stays smooth at any speed multiplier.
  *
  * One real second is one sim-minute at 1x.
  */
 export const REAL_SECOND_IN_SIM_MINUTES = 1
-/** Ignore deltas larger than this: a backgrounded tab must not teleport cranes. */
+/** Ignore deltas larger than this: a backgrounded tab must not teleport AGVs. */
 const MAX_FRAME_SECONDS = 0.1
 
 export type TickFn = (simMinutes: number) => void

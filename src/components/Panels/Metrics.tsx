@@ -13,7 +13,7 @@ export function Metrics() {
     (s) => Object.values(s.containers).filter((c) => c.status === 'stored').length,
   )
   const avoided = Math.max(0, m.naiveRehandles - m.plannedRehandles)
-  const util = m.craneElapsed > 0 ? m.craneBusy / m.craneElapsed : 0
+  const util = m.agvElapsed > 0 ? m.agvBusy / m.agvElapsed : 0
   const dwell = m.dwellCount > 0 ? m.dwellTotal / m.dwellCount : 0
 
   return (
@@ -33,7 +33,7 @@ export function Metrics() {
           tint={avoided > 0 ? 'var(--color-signal)' : undefined}
         />
         <Stat label="Avg dwell" value={dwell ? formatMinutes(dwell) : '—'} />
-        <Stat label="Crane utilisation" value={`${Math.round(util * 100)}%`} />
+        <Stat label="AGV utilisation" value={`${Math.round(util * 100)}%`} />
         <Stat label="Gate queue" value={String(gate)} />
         <Stat label="Traffic holds" value={String(m.holds)} />
       </dl>

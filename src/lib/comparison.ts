@@ -25,7 +25,7 @@ export type StrategyResult = {
   placements: number
   /** dig-out lifts forced at retrieval — the waste being eliminated */
   rehandles: number
-  /** A* cost of every loaded crane move, including the dig-outs */
+  /** A* cost of every loaded AGV move, including the dig-outs */
   travel: number
   /** sim-minutes the gate was blocked because the yard could not take a box */
   gateBlocked: number

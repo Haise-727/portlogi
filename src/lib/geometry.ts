@@ -2,7 +2,7 @@ import type { Cell } from './types'
 import { GRID_H, GRID_W, slotToCell, yardConfig } from './yardConfig'
 
 /**
- * One virtual coordinate space shared by the slots, the cranes, the route
+ * One virtual coordinate space shared by the slots, the AGVs, the route
  * overlay and the carried containers. Everything is positioned as a percentage
  * of this space, so the whole yard scales with its container while staying
  * pixel-aligned with itself.
@@ -57,7 +57,7 @@ export function slotRect(slot: string): Rect {
   return cellRect(slotToCell(slot))
 }
 
-/** Fractional cell coordinates -> virtual units, for smooth crane motion. */
+/** Fractional cell coordinates -> virtual units, for smooth AGV motion. */
 export function lerpCell(a: Cell, b: Cell, t: number): { x: number; y: number } {
   const ca = cellCenter(a)
   const cb = cellCenter(b)
