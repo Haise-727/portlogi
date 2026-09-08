@@ -12,7 +12,7 @@ export const yardConfig = {
   rows: ['A', 'B', 'C'] as const,
   cols: [1, 2, 3, 4] as const,
   tiers: 2,
-  /** Reefer power gantry runs along row A only — reefers are legal nowhere else. */
+  /** The reefer power rail runs along row A only — reefers are legal nowhere else. */
   poweredRows: ['A'] as const,
   /** Column index (1-based) the gate lane feeds into, at the top of the yard. */
   gateCol: 2,
@@ -48,7 +48,7 @@ export function colOf(slot: string): number {
 /* ------------------------------------------------------------------ *
  * Movement grid
  *
- * Cranes run along aisles, so the pathfinding graph interleaves slot
+ * Agvs run along aisles, so the pathfinding graph interleaves slot
  * rows with aisle rows and flanks the yard with two driveways:
  *
  *        x:  0     1     2     3     4     5
@@ -70,7 +70,35 @@ export const GRID_H = yardConfig.rows.length * 2 + 1
 export const GATE_CELL: Cell = { x: yardConfig.gateCol, y: 0 }
 export const QUAY_CELL: Cell = { x: yardConfig.quayCol, y: GRID_H - 1 }
 
+/* ------------------------------------------------------------------ *
+ * Transfer apron
+ *
+ * Two powered set-down pads on the quay apron. They are not stacking
+ * positions and never enter the allocator's scoring — they exist so a
+ * dig-out always has somewhere to put the box in its way.
+ *
+ * Without them the yard can deadlock for real: a reefer buried in a full
+ * powered row has no legal position anywhere, so the box on top of it can
+ * never come off and neither container ever moves again. Terminals solve
+ * this the same way, with an interchange area beside the quay.
+ *
+ * The pads sit on the bottom apron, which is wide enough to drive past, so
+ * a box parked there never blocks a route.
+ * ------------------------------------------------------------------ */
+export const BUFFER_SLOTS = ['T1', 'T2'] as const
+const BUFFER_CELLS: Record<string, Cell> = {
+  T1: { x: 1, y: GRID_H - 1 },
+  T2: { x: 4, y: GRID_H - 1 },
+}
+
+export function isBufferSlot(slot: string): boolean {
+  return (BUFFER_SLOTS as readonly string[]).includes(slot)
+}
+
 export function slotToCell(slot: string): Cell {
+  const pad = BUFFER_CELLS[slot]
+  if (pad) return pad
+
   const r = yardConfig.rows.indexOf(rowOf(slot) as RowLabel)
   return { x: colOf(slot), y: r * 2 + 1 }
 }

@@ -26,7 +26,7 @@ import {
  */
 export const ALLOC_WEIGHTS = {
   rehandle: 40, // the core idea: never bury an earlier departure
-  travel: 15, // gate -> slot crane distance
+  travel: 15, // gate -> slot agv distance
   cluster: 15, // keep one destination together
   spread: 12, // do not fragment the yard across fresh stacks
   access: 18, // do not wall off the aisles
@@ -83,7 +83,7 @@ export function emptySnapshot(): YardSnapshot {
   return snap
 }
 
-/** Cells a crane cannot drive through, because a stack stands there. */
+/** Cells an AGV cannot drive through, because a stack stands there. */
 export function blockedCells(yard: YardSnapshot): Set<string> {
   const set = new Set<string>()
   for (const slot of SLOT_IDS) {
@@ -178,6 +178,22 @@ export function checkConstraints(
     }
   }
 
+  // Plugs are scarce and reefers have nowhere else to go. A dry box may not
+  // take the last powered position, because a reefer arriving after it - or
+  // one already buried in that row - would then have no legal move at all.
+  if (container.type !== 'reefer' && isPoweredSlot(slot)) {
+    let freePowered = 0
+    for (const s of SLOT_IDS) {
+      if (isPoweredSlot(s)) freePowered += yardConfig.tiers - yard[s].length
+    }
+    if (freePowered <= 1) {
+      return {
+        rule: 'plug-reserve',
+        reason: 'Last powered position is held for reefers.',
+      }
+    }
+  }
+
   if (yardConfig.enforceWeightStacking && tier > 0) {
     const below = stack[stack.length - 1]
     if (container.weight > below.weight) {
@@ -222,7 +238,7 @@ function scoreSlot(
   const stack = yard[slot]
 
   /* 1. Rehandle risk — the whole point of the exercise. Placing a late
-        departure on top of an early one guarantees a wasted crane move. */
+        departure on top of an early one guarantees a wasted agv move. */
   const buried = countRehandles(container, stack)
   const rehandleRaw = buried / Math.max(1, yardConfig.tiers - 1)
   const rehandleDetail =

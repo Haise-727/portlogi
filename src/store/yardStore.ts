@@ -21,14 +21,22 @@ import {
   resolveTraffic,
 } from '../lib/traffic'
 import type { Cell, Container, EventSeverity, Tier, YardEvent } from '../lib/types'
-import { GATE_CELL, QUAY_CELL, SLOT_IDS, slotToCell, yardConfig } from '../lib/yardConfig'
+import {
+  BUFFER_SLOTS,
+  GATE_CELL,
+  QUAY_CELL,
+  SLOT_IDS,
+  isBufferSlot,
+  slotToCell,
+  yardConfig,
+} from '../lib/yardConfig'
 import { cellCenter } from '../lib/geometry'
 
 /* ------------------------------------------------------------------ *
- * Cranes
+ * Agvs
  * ------------------------------------------------------------------ */
 
-export type CraneMode = 'idle' | 'moving' | 'hoisting' | 'lowering' | 'held'
+export type AgvMode = 'idle' | 'moving' | 'hoisting' | 'lowering' | 'held'
 
 export type Leg =
   | { kind: 'move'; goal: Cell; note: string }
@@ -50,13 +58,13 @@ export type RetrievalPlan = {
   extraMoves: number
 }
 
-export type Crane = {
+export type Agv = {
   id: string
   home: Cell
   cell: Cell
   pos: { x: number; y: number }
   facing: number | null
-  mode: CraneMode
+  mode: AgvMode
   legs: Leg[]
   path: Cell[] | null
   pathIndex: number
@@ -82,7 +90,7 @@ export type Job = {
 export type Metrics = {
   stored: number
   departed: number
-  /** dig-out moves the cranes actually performed */
+  /** dig-out moves the AGVs actually performed */
   rehandleMoves: number
   /** rehandles the optimiser committed to at placement time */
   plannedRehandles: number
@@ -90,13 +98,13 @@ export type Metrics = {
   naiveRehandles: number
   dwellTotal: number
   dwellCount: number
-  craneBusy: number
-  craneElapsed: number
+  agvBusy: number
+  agvElapsed: number
   holds: number
 }
 
 export type RoutePreview = {
-  craneId: string
+  agvId: string
   path: Cell[]
   explored: Cell[]
   cost: number
@@ -111,7 +119,7 @@ export type YardState = {
   containers: Record<string, Container>
   stacks: Record<string, string[]>
   gateQueue: string[]
-  cranes: Crane[]
+  agvs: Agv[]
   jobs: Job[]
   events: YardEvent[]
   vessels: Vessel[]
@@ -124,6 +132,8 @@ export type YardState = {
   hoveredSlot: string | null
   metrics: Metrics
   showExplored: boolean
+  /** show engineering detail and machine-level chatter in the log */
+  verboseLog: boolean
 }
 
 export type YardActions = {
@@ -136,13 +146,14 @@ export type YardActions = {
   toggleRunning: () => void
   toggleAuto: () => void
   toggleExplored: () => void
+  toggleVerbose: () => void
   select: (id: string | null) => void
   hoverSlot: (slot: string | null) => void
   reset: () => void
 }
 
-const CRANE_IDS = ['CR-1', 'CR-2']
-const CRANE_HOMES: Cell[] = [
+const AGV_IDS = ['AGV-1', 'AGV-2']
+const AGV_HOMES: Cell[] = [
   { x: 0, y: 2 },
   { x: 5, y: 4 },
 ]
@@ -154,7 +165,7 @@ const SEED = 20260908
 const NO_SLOT_HOLD = 'No legal slot — waiting'
 
 /**
- * With reduced motion asked for, cranes step cell to cell instead of gliding.
+ * With reduced motion asked for, AGVs step cell to cell instead of gliding.
  * The simulation still runs — the state changes are the content — but nothing
  * slides across the screen.
  */
@@ -182,16 +193,19 @@ const everStored = new Set<string>()
 const placementBackoff = new Map<string, number>()
 /** Containers already reported as unplaceable, so the log says it once. */
 const warnedNoSlot = new Set<string>()
+/** Same, for dig-outs that cannot start yet. */
+const warnedNoDigOut = new Set<string>()
+const retrievalBackoff = new Map<string, number>()
 const PLACEMENT_RETRY = 4 // sim-minutes
 
-function freshCranes(): Crane[] {
-  return CRANE_IDS.map((id, i) => ({
+function freshAgvs(): Agv[] {
+  return AGV_IDS.map((id, i) => ({
     id,
-    home: CRANE_HOMES[i],
-    cell: CRANE_HOMES[i],
-    pos: cellCenter(CRANE_HOMES[i]),
+    home: AGV_HOMES[i],
+    cell: AGV_HOMES[i],
+    pos: cellCenter(AGV_HOMES[i]),
     facing: null,
-    mode: 'idle' as CraneMode,
+    mode: 'idle' as AgvMode,
     legs: [],
     path: null,
     pathIndex: 0,
@@ -210,19 +224,24 @@ function freshCranes(): Crane[] {
 function emptyStacks(): Record<string, string[]> {
   const s: Record<string, string[]> = {}
   for (const id of SLOT_IDS) s[id] = []
+  // Keyed alongside the yard so lookups work, but absent from SLOT_IDS, so the
+  // allocator, the metrics and the occupancy figure never count them.
+  for (const id of BUFFER_SLOTS) s[id] = []
   return s
 }
 
 function initialState(): YardState {
   generator.reset()
-  reservations.release('CR-1')
-  reservations.release('CR-2')
+  reservations.release('AGV-1')
+  reservations.release('AGV-2')
   eventId = 0
   arrivalTimer = 0
   naiveStacks = emptyStacks()
   everStored.clear()
   placementBackoff.clear()
   warnedNoSlot.clear()
+  warnedNoDigOut.clear()
+  retrievalBackoff.clear()
   return {
     now: 0,
     running: true,
@@ -231,14 +250,14 @@ function initialState(): YardState {
     containers: {},
     stacks: emptyStacks(),
     gateQueue: [],
-    cranes: freshCranes(),
+    agvs: freshAgvs(),
     jobs: [],
     events: [
       {
         id: eventId++,
         at: 0,
         severity: 'info',
-        message: 'Yard 3 online. 12 ground slots, 2 tiers, 2 gantry cranes.',
+        message: 'Yard 3 online. 12 ground positions, 2 tiers high, 2 vehicles, 2 transfer pads.',
       },
     ],
     vessels: generator.vessels,
@@ -257,11 +276,12 @@ function initialState(): YardState {
       naiveRehandles: 0,
       dwellTotal: 0,
       dwellCount: 0,
-      craneBusy: 0,
-      craneElapsed: 0,
+      agvBusy: 0,
+      agvElapsed: 0,
       holds: 0,
     },
     showExplored: false,
+    verboseLog: false,
   }
 }
 
@@ -298,12 +318,40 @@ function patchContainer(d: Draft, id: string, patch: Partial<Container>): void {
   cs[id] = { ...cs[id], ...patch }
 }
 
-function log(d: Draft, severity: EventSeverity, message: string, ref?: string): void {
-  if (!d.dirty.has('events')) {
-    d.events = d.events.slice(0, 199)
-    d.dirty.add('events')
+type LogOpts = {
+  /** engineering detail, shown only when the operator turns detail mode on */
+  detail?: string
+  /** machine-level chatter, hidden entirely unless detail mode is on */
+  verbose?: boolean
+  ref?: string
+}
+
+/**
+ * One plain sentence per line by default. Anything an examiner does not need
+ * in order to follow what happened is either pushed into `detail`, which only
+ * appears in detail mode, or marked `verbose` and hidden outright.
+ *
+ * Consecutive repeats collapse into a count rather than filling the panel.
+ */
+function log(d: Draft, severity: EventSeverity, message: string, opts: LogOpts = {}): void {
+  d.dirty.add('events')
+  const head = d.events[0]
+  if (head && head.message === message && head.severity === severity) {
+    d.events = [{ ...head, count: (head.count ?? 1) + 1, at: d.now }, ...d.events.slice(1)]
+    return
   }
-  d.events = [{ id: eventId++, at: d.now, severity, message, ref }, ...d.events].slice(0, 200)
+  d.events = [
+    {
+      id: eventId++,
+      at: d.now,
+      severity,
+      message,
+      detail: opts.detail,
+      verbose: opts.verbose,
+      ref: opts.ref,
+    },
+    ...d.events,
+  ].slice(0, 200)
 }
 
 /** Drop the dirty-tracking field before the draft goes back into the store. */
@@ -332,7 +380,7 @@ function planRetrieval(d: Draft, target: Container): RetrievalPlan {
 
   for (const id of [...above].reverse()) {
     const blocker = d.containers[id]
-    const to = pickTempSlot(blocker, working, slot, d, d.cranes[0])
+    const to = pickTempSlot(blocker, working, slot, d, d.agvs[0], blockers.map((b) => b.to))
     if (!to) continue
     blockers.push({ id, from: slot, to })
     working[slot] = working[slot].filter((c) => c.id !== id)
@@ -401,15 +449,15 @@ export const useYard = create<YardState & YardActions>((set, get) => ({
       }
 
       dispatch(d)
-      const cranes = d.cranes.map((c) => stepCrane(d, c, dt))
-      d.cranes = cranes
+      const agvs = d.agvs.map((c) => stepAgv(d, c, dt))
+      d.agvs = agvs
       resolveDeadlocks(d)
 
-      const busy = cranes.reduce((a, c) => a + c.busyMinutes, 0)
+      const busy = agvs.reduce((a, c) => a + c.busyMinutes, 0)
       d.metrics = {
         ...d.metrics,
-        craneBusy: busy,
-        craneElapsed: state.metrics.craneElapsed + dt * cranes.length,
+        agvBusy: busy,
+        agvElapsed: state.metrics.agvElapsed + dt * agvs.length,
       }
 
       return strip(d)
@@ -420,7 +468,7 @@ export const useYard = create<YardState & YardActions>((set, get) => ({
     set((state) => {
       const d = draftOf(state)
       if (freeCapacity(d) <= 0) {
-        log(d, 'critical', 'Gate hold — yard at capacity, no legal position for a new box.')
+        log(d, 'critical', 'Gate held — the yard is full.')
         return strip(d)
       }
       admit(d)
@@ -442,19 +490,49 @@ export const useYard = create<YardState & YardActions>((set, get) => ({
       // Nothing on top: no decision to make, just work it.
       if (above.length === 0) {
         enqueueRetrieve(d, c)
-        log(d, 'action', `Retrieval ${c.id} queued — top of stack, direct lift.`, containerId)
+        log(d, 'action', `${shortId(c.id)} called for the quay — top of its stack, straight lift.`, {
+          ref: containerId,
+        })
         return strip(d)
       }
 
-      // Buried: cost it out and put the chain in front of the operator first.
+      const p = priorityOf(d, c)
+      const overdue = c.etd <= d.now
+
+      // Failsafe: if the box is already overdue or scored critical, waiting for
+      // an operator to approve the dig-out costs more than the dig-out does.
+      // Authorise it, and say why rather than doing it silently.
+      if (overdue || p.band === 'critical') {
+        enqueueRetrieve(d, c)
+        d.rehandleChain = above
+        log(
+          d,
+          'critical',
+          `${shortId(c.id)} is ${overdue ? 'overdue' : 'critical'} and buried — digging it out now, ${
+            above.length * 2
+          } extra moves.`,
+          {
+            ref: containerId,
+            detail: `Priority override: approval skipped because the box scored ${p.score.toFixed(
+              1,
+            )} (${p.band}). Blocking boxes: ${above.map((id) => shortId(d.containers[id].id)).join(', ')}.`,
+          },
+        )
+        return strip(d)
+      }
+
+      // Otherwise: cost it out and put the chain in front of the operator first.
       d.pendingPlan = planRetrieval(d, c)
       log(
         d,
         'warn',
-        `${c.id} is buried under ${above.length} box${above.length === 1 ? '' : 'es'} — ${
-          above.length * 2
-        } extra crane moves before it can be loaded. Awaiting confirmation.`,
-        containerId,
+        `${shortId(c.id)} is buried under ${above.length} box${
+          above.length === 1 ? '' : 'es'
+        } — waiting for you to approve the dig-out.`,
+        {
+          ref: containerId,
+          detail: `${above.length * 2} extra moves: lift each blocker off, park it, fetch the target, put the blockers back.`,
+        },
       )
       return strip(d)
     })
@@ -470,14 +548,12 @@ export const useYard = create<YardState & YardActions>((set, get) => ({
       if (!c || c.status !== 'stored') return strip(d)
       enqueueRetrieve(d, c)
       d.rehandleChain = plan.blockers.map((b) => b.id)
-      log(
-        d,
-        'critical',
-        `Dig-out authorised for ${c.id} — ${plan.blockers
-          .map((b) => `${d.containers[b.id].id} to ${b.to}`)
-          .join(', ')}, then back again.`,
-        plan.containerId,
-      )
+      log(d, 'critical', `Dig-out started for ${shortId(c.id)}.`, {
+        ref: plan.containerId,
+        detail: `Blockers go to ${plan.blockers
+          .map((b) => `${shortId(d.containers[b.id].id)} → ${b.to}`)
+          .join(', ')}, and come back afterwards.`,
+      })
       return strip(d)
     })
   },
@@ -486,7 +562,11 @@ export const useYard = create<YardState & YardActions>((set, get) => ({
     set((state) => {
       const d = draftOf(state)
       if (d.pendingPlan) {
-        log(d, 'info', `Dig-out for ${d.containers[d.pendingPlan.containerId]?.id} cancelled.`)
+        log(
+          d,
+          'info',
+          `Dig-out for ${shortId(d.containers[d.pendingPlan.containerId]?.id ?? '')} cancelled.`,
+        )
       }
       d.pendingPlan = null
       return strip(d)
@@ -511,6 +591,10 @@ export const useYard = create<YardState & YardActions>((set, get) => ({
 
   toggleExplored() {
     set((s) => ({ showExplored: !s.showExplored }))
+  },
+
+  toggleVerbose() {
+    set((s) => ({ verboseLog: !s.verboseLog }))
   },
 
   select(id) {
@@ -551,12 +635,10 @@ function admit(d: Draft): void {
     d.metrics = { ...d.metrics, naiveRehandles: d.metrics.naiveRehandles + naive.rehandles }
   }
 
-  log(
-    d,
-    'action',
-    `Gate scan ${c.tagUid} — ${c.id}, ${c.type}, ${c.weight}t for ${c.destination} (${c.vessel}).`,
-    c.id,
-  )
+  log(d, 'action', `Gate: ${shortId(c.id)} arrived — ${c.type}, ${c.weight}t for ${c.destination}.`, {
+    ref: c.id,
+    detail: `RFID ${c.tagUid} · full marking ${c.id} · booked on ${c.vessel}`,
+  })
 }
 
 function freeCapacity(d: Draft): number {
@@ -565,10 +647,10 @@ function freeCapacity(d: Draft): number {
   return SLOT_IDS.length * yardConfig.tiers - used - d.gateQueue.length
 }
 
-/** Container ids a crane is already working, whether or not a job still exists. */
+/** Container ids an AGV is already working, whether or not a job still exists. */
 function assignedIds(d: Draft): Set<string> {
   const out = new Set<string>()
-  for (const c of d.cranes) {
+  for (const c of d.agvs) {
     if (c.carrying) out.add(c.carrying)
     for (const leg of c.legs) {
       if (leg.kind !== 'move') out.add(leg.containerId)
@@ -592,7 +674,9 @@ function callForward(d: Draft): void {
     if (d.jobs.some((j) => j.containerId === id)) continue
     const p = priorityOf(d, c)
     d.jobs = [...d.jobs, { kind: 'retrieve', containerId: id, priority: p.score, createdAt: d.now }]
-    log(d, 'warn', `${c.vessel} calling ${c.id} forward — ETD in ${Math.round(c.etd - d.now)} min.`, id)
+    log(d, 'warn', `${c.vessel} is calling ${shortId(c.id)} forward — due out in ${Math.round(
+      c.etd - d.now,
+    )} min.`, { ref: id })
   }
 
   // Congestion drain. Without this the yard can sit full with nothing yet due,
@@ -611,21 +695,18 @@ function callForward(d: Draft): void {
   if (!next) return
 
   d.jobs = [...d.jobs, { kind: 'retrieve', containerId: next.c.id, priority: next.p.score, createdAt: d.now }]
-  log(
-    d,
-    'warn',
-    `Yard at ${Math.round(occ * 100)}% — working ${next.c.id} forward to free space.`,
+  log(d, 'warn', `Yard ${Math.round(occ * 100)}% full — bringing ${shortId(
     next.c.id,
-  )
+  )} forward to free space.`, { ref: next.c.id })
 }
 
 /* ------------------------------------------------------------------ *
- * Dispatcher — highest priority job to the first free crane
+ * Dispatcher — highest priority job to the first free AGV
  * ------------------------------------------------------------------ */
 
 function dispatch(d: Draft): void {
   if (d.jobs.length === 0) return
-  const idle = d.cranes.filter((c) => c.mode === 'idle' && c.legs.length === 0 && !c.carrying)
+  const idle = d.agvs.filter((c) => c.mode === 'idle' && c.legs.length === 0 && !c.carrying)
   if (idle.length === 0) return
 
   let used = 0
@@ -640,24 +721,27 @@ function dispatch(d: Draft): void {
   })
   const taken: string[] = []
 
-  for (const crane of idle) {
+  for (const agv of idle) {
     const job = queue.find(
-      (j) => !taken.includes(j.containerId) && (placementBackoff.get(j.containerId) ?? 0) <= d.now,
+      (j) =>
+        !taken.includes(j.containerId) &&
+        (placementBackoff.get(j.containerId) ?? 0) <= d.now &&
+        (retrievalBackoff.get(j.containerId) ?? 0) <= d.now,
     )
     if (!job) break
-    const built = job.kind === 'place' ? buildPlace(d, job, crane) : buildRetrieve(d, job, crane)
+    const built = job.kind === 'place' ? buildPlace(d, job, agv) : buildRetrieve(d, job, agv)
     if (!built) continue
     taken.push(job.containerId)
-    d.cranes = d.cranes.map((c) => (c.id === crane.id ? built : c))
+    d.agvs = d.agvs.map((c) => (c.id === agv.id ? built : c))
   }
 
   if (taken.length) d.jobs = d.jobs.filter((j) => !taken.includes(j.containerId))
 }
 
-/** Slots another crane is already carrying a box towards. */
+/** Slots another AGV is already carrying a box towards. */
 function inFlightTargets(d: Draft, exclude?: string): Record<string, number> {
   const out: Record<string, number> = {}
-  for (const c of d.cranes) {
+  for (const c of d.agvs) {
     if (c.id === exclude) continue
     for (const leg of c.legs) {
       if (leg.kind === 'lower') out[leg.slot] = (out[leg.slot] ?? 0) + 1
@@ -670,31 +754,29 @@ function inFlightTargets(d: Draft, exclude?: string): Record<string, number> {
 function firstFreeCandidate(
   d: Draft,
   candidates: Candidate[],
-  crane: Crane,
+  agv: Agv,
 ): Candidate | undefined {
-  const inFlight = inFlightTargets(d, crane.id)
+  const inFlight = inFlightTargets(d, agv.id)
   return candidates.find(
     (c) => d.stacks[c.slot].length + (inFlight[c.slot] ?? 0) < yardConfig.tiers,
   )
 }
 
-function buildPlace(d: Draft, job: Job, crane: Crane): Crane | null {
+function buildPlace(d: Draft, job: Job, agv: Agv): Agv | null {
   const container = d.containers[job.containerId]
   if (!container) return null
 
   const result = allocate(container, snapshotOf(d), GATE_CELL)
 
-  const chosen = firstFreeCandidate(d, result.candidates, crane)
+  const chosen = firstFreeCandidate(d, result.candidates, agv)
   if (!chosen) {
     if (!warnedNoSlot.has(container.id)) {
       warnedNoSlot.add(container.id)
       const why = result.rejected[0]?.reason ?? 'no slot satisfies the constraints'
-      log(
-        d,
-        'critical',
-        `${container.id} held at the gate — every slot rejected (${why}). It will go in as soon as the yard drains.`,
-        container.id,
-      )
+      log(d, 'critical', `${shortId(container.id)} is waiting at the gate — no legal position for it yet.`, {
+        ref: container.id,
+        detail: `Every one of the ${result.rejected.length} positions was rejected. First reason: ${why}`,
+      })
     }
     placementBackoff.set(container.id, d.now + PLACEMENT_RETRY)
     return null
@@ -710,17 +792,22 @@ function buildPlace(d: Draft, job: Job, crane: Crane): Crane | null {
   log(
     d,
     'good',
-    `Allocator picked ${slot} tier ${tier} for ${container.id} — score ${score.toFixed(1)}${
-      runnerUp ? ` vs ${runnerUp.score.toFixed(1)} for ${runnerUp.slot}` : ''
-    }, ${rehandles === 0 ? 'no rehandle' : `${rehandles} rehandle`}.`,
-    container.id,
+    `${shortId(container.id)} → ${slot}, ${tier === 0 ? 'ground' : 'upper'} tier${
+      rehandles === 0 ? '' : ` — buries ${rehandles} earlier departure`
+    }.`,
+    {
+      ref: container.id,
+      detail: `Best of ${result.candidates.length + result.rejected.length} positions, score ${score.toFixed(
+        1,
+      )}${runnerUp ? ` against ${runnerUp.score.toFixed(1)} for ${runnerUp.slot}` : ''}.`,
+    },
   )
   if (rehandles > 0) {
     d.metrics = { ...d.metrics, plannedRehandles: d.metrics.plannedRehandles + rehandles }
   }
 
   return {
-    ...crane,
+    ...agv,
     priority: job.priority,
     taskLabel: `Place ${container.id} → ${slot}`,
     legs: [
@@ -732,7 +819,7 @@ function buildPlace(d: Draft, job: Job, crane: Crane): Crane | null {
   }
 }
 
-function buildRetrieve(d: Draft, job: Job, crane: Crane): Crane | null {
+function buildRetrieve(d: Draft, job: Job, agv: Agv): Agv | null {
   const container = d.containers[job.containerId]
   if (!container || container.status !== 'stored' || !container.slot) return null
 
@@ -749,10 +836,28 @@ function buildRetrieve(d: Draft, job: Job, crane: Crane): Crane | null {
   const working = snapshotOf(d)
   for (const blockerId of [...above].reverse()) {
     const blocker = d.containers[blockerId]
-    const temp = pickTempSlot(blocker, working, slot, d, crane)
+    const temp = pickTempSlot(blocker, working, slot, d, agv, parked.map((p) => p.slot))
     if (!temp) {
-      log(d, 'critical', `Cannot dig out ${container.id} — nowhere legal to set ${blocker.id} down.`)
+      // Both pads occupied as well: nothing to do but wait for one to clear.
+      if (!warnedNoDigOut.has(container.id)) {
+        warnedNoDigOut.add(container.id)
+        log(
+          d,
+          'critical',
+          `${shortId(container.id)} cannot be dug out yet — nowhere to put ${shortId(
+            blocker.id,
+          )} down. Waiting for space.`,
+          { ref: container.id },
+        )
+      }
+      retrievalBackoff.set(container.id, d.now + PLACEMENT_RETRY)
       return null
+    }
+    if (isBufferSlot(temp)) {
+      log(d, 'warn', `No yard position free for ${shortId(blocker.id)} — parking it on pad ${temp}.`, {
+        ref: blocker.id,
+        detail: 'The transfer apron exists so a dig-out is never impossible; the box returns once the target is away.',
+      })
     }
     legs.push({ kind: 'move', goal: slotToCell(slot), note: `to ${slot}` })
     legs.push({ kind: 'hoist', containerId: blockerId, slot, slow: true })
@@ -776,130 +881,148 @@ function buildRetrieve(d: Draft, job: Job, crane: Crane): Crane | null {
     legs.push({ kind: 'lower', containerId: p.id, slot, slow: true })
   }
 
+  warnedNoDigOut.delete(container.id)
+  retrievalBackoff.delete(container.id)
   if (above.length) {
     d.metrics = { ...d.metrics, rehandleMoves: d.metrics.rehandleMoves + above.length }
     d.rehandleChain = above
     log(
       d,
       'warn',
-      `Rehandle: ${above.map((id) => d.containers[id].id).join(', ')} must come off ${slot} before ${container.id}.`,
-      container.id,
+      `${above.map((id) => shortId(d.containers[id].id)).join(', ')} must come off ${slot} before ${shortId(
+        container.id,
+      )} can move.`,
+      { ref: container.id },
     )
   }
 
   return {
-    ...crane,
+    ...agv,
     priority: job.priority,
     taskLabel: `Retrieve ${container.id}`,
     legs,
   }
 }
 
+/**
+ * Where a blocking box goes while the one underneath it is fetched. A real
+ * stacking position is always preferred; the transfer apron is the fallback
+ * that guarantees a dig-out can never be impossible.
+ */
 function pickTempSlot(
   blocker: Container,
   yard: YardSnapshot,
   avoid: string,
   d: Draft,
-  crane: Crane,
+  agv: Agv,
+  taken: string[] = [],
 ): string | null {
   const result = allocate(blocker, yard, slotToCell(avoid))
-  const inFlight = inFlightTargets(d, crane.id)
+  const inFlight = inFlightTargets(d, agv.id)
   const pick = result.candidates.find(
-    (c) => c.slot !== avoid && yard[c.slot].length + (inFlight[c.slot] ?? 0) < yardConfig.tiers,
+    (c) =>
+      c.slot !== avoid &&
+      !taken.includes(c.slot) &&
+      yard[c.slot].length + (inFlight[c.slot] ?? 0) < yardConfig.tiers,
   )
-  return pick?.slot ?? null
+  if (pick) return pick.slot
+
+  const pad = BUFFER_SLOTS.find(
+    (id) => (d.stacks[id]?.length ?? 0) === 0 && !taken.includes(id) && !inFlight[id],
+  )
+  return pad ?? null
 }
 
 /* ------------------------------------------------------------------ *
- * Crane execution
+ * Agv execution
  * ------------------------------------------------------------------ */
 
-function stepCrane(d: Draft, input: Crane, dt: number): Crane {
-  let crane = { ...input }
+function stepAgv(d: Draft, input: Agv, dt: number): Agv {
+  let agv = { ...input }
 
-  if (crane.mode === 'held') {
-    if (d.now < crane.holdUntil) return crane
-    crane.mode = 'idle'
-    crane.holdReason = null
+  if (agv.mode === 'held') {
+    if (d.now < agv.holdUntil) return agv
+    agv.mode = 'idle'
+    agv.holdReason = null
   }
 
-  if (crane.path && crane.mode === 'moving') {
-    crane = advance(crane, dt)
-    if (crane.path) {
-      crane.busyMinutes = crane.busyMinutes + dt
-      return crane
+  if (agv.path && agv.mode === 'moving') {
+    agv = advance(agv, dt)
+    if (agv.path) {
+      agv.busyMinutes = agv.busyMinutes + dt
+      return agv
     }
   }
 
-  if (crane.mode === 'hoisting' || crane.mode === 'lowering') {
-    const leg0 = crane.legs[0]
+  if (agv.mode === 'hoisting' || agv.mode === 'lowering') {
+    const leg0 = agv.legs[0]
     const slow = leg0 && (leg0.kind === 'hoist' || leg0.kind === 'lower') && leg0.slow
-    crane.liftT += dt / (LIFT_MINUTES * (slow ? 2.2 : 1))
-    crane.busyMinutes = crane.busyMinutes + dt
-    if (crane.liftT < 1) return crane
-    crane = completeLift(d, crane)
-    return crane
+    agv.liftT += dt / (LIFT_MINUTES * (slow ? 2.2 : 1))
+    agv.busyMinutes = agv.busyMinutes + dt
+    if (agv.liftT < 1) return agv
+    agv = completeLift(d, agv)
+    return agv
   }
 
-  const leg = crane.legs[0]
+  const leg = agv.legs[0]
   if (!leg) {
-    if (crane.mode !== 'idle') {
-      crane.mode = 'idle'
-      crane.taskLabel = null
-      crane.route = null
-      crane.priority = 0
-      reservations.release(crane.id)
+    if (agv.mode !== 'idle') {
+      agv.mode = 'idle'
+      agv.taskLabel = null
+      agv.route = null
+      agv.priority = 0
+      reservations.release(agv.id)
     }
-    return crane
+    return agv
   }
 
-  crane.busyMinutes = crane.busyMinutes + dt
+  agv.busyMinutes = agv.busyMinutes + dt
 
   switch (leg.kind) {
     case 'move':
-      return beginMove(d, crane, leg.goal)
+      return beginMove(d, agv, leg.goal)
     case 'collect': {
-      crane.mode = 'hoisting'
-      crane.liftT = 0
-      return crane
+      agv.mode = 'hoisting'
+      agv.liftT = 0
+      return agv
     }
     case 'hoist':
-      crane.mode = 'hoisting'
-      crane.liftT = 0
-      return crane
+      agv.mode = 'hoisting'
+      agv.liftT = 0
+      return agv
     case 'lower':
     case 'depart':
-      crane.mode = 'lowering'
-      crane.liftT = 0
-      return crane
+      agv.mode = 'lowering'
+      agv.liftT = 0
+      return agv
   }
 }
 
-function beginMove(d: Draft, crane: Crane, goal: Cell): Crane {
-  if (crane.cell.x === goal.x && crane.cell.y === goal.y) {
-    return { ...crane, legs: crane.legs.slice(1), path: null, mode: 'idle' }
+function beginMove(d: Draft, agv: Agv, goal: Cell): Agv {
+  if (agv.cell.x === goal.x && agv.cell.y === goal.y) {
+    return { ...agv, legs: agv.legs.slice(1), path: null, mode: 'idle' }
   }
 
   const blocked = stackCells(d)
-  // Never treat the cell the crane is standing in as solid.
-  blocked.delete(`${crane.cell.x},${crane.cell.y}`)
-  const path = findPath(crane.cell, goal, { blocked, facing: crane.facing })
+  // Never treat the cell the AGV is standing in as solid.
+  blocked.delete(`${agv.cell.x},${agv.cell.y}`)
+  const path = findPath(agv.cell, goal, { blocked, facing: agv.facing })
 
   if (!path.ok) {
-    log(d, 'critical', `${crane.id} blocked: ${path.reason}`)
-    return { ...crane, mode: 'held', holdUntil: d.now + MINUTES_PER_CELL * 3, holdReason: path.reason }
+    log(d, 'critical', `${agv.id} cannot get through: ${path.reason}`)
+    return { ...agv, mode: 'held', holdUntil: d.now + MINUTES_PER_CELL * 3, holdReason: path.reason }
   }
 
-  const cargo = crane.carrying ? d.containers[crane.carrying] : null
+  const cargo = agv.carrying ? d.containers[agv.carrying] : null
   const cargoLabel = cargo
     ? `carrying ${priorityOf(d, cargo).band}-priority ${shortId(cargo.id)}`
     : 'running empty'
 
   const decision = resolveTraffic({
-    craneId: crane.id,
-    priority: crane.priority,
+    agvId: agv.id,
+    priority: agv.priority,
     cargoLabel,
-    start: crane.cell,
+    start: agv.cell,
     goal,
     path,
     startAt: d.now,
@@ -910,9 +1033,9 @@ function beginMove(d: Draft, crane: Crane, goal: Cell): Crane {
 
   if (decision.action === 'hold') {
     d.metrics = { ...d.metrics, holds: d.metrics.holds + 1 }
-    log(d, 'warn', decision.reason)
+    log(d, 'warn', decision.reason, { verbose: true })
     return {
-      ...crane,
+      ...agv,
       mode: 'held',
       holdUntil: decision.until,
       holdReason: `Holding for ${decision.conflictWith} at ${decision.at}`,
@@ -921,25 +1044,25 @@ function beginMove(d: Draft, crane: Crane, goal: Cell): Crane {
   }
 
   const chosen = decision.action === 'reroute' ? decision.path : decision.path
-  reservations.reserve(crane.id, crane.priority, decision.timed, cargoLabel)
+  reservations.reserve(agv.id, agv.priority, decision.timed, cargoLabel)
 
   if (decision.action === 'reroute') {
-    log(d, 'info', decision.reason)
+    log(d, 'info', decision.reason, { verbose: true })
   } else if (decision.note) {
-    log(d, 'info', decision.note)
+    log(d, 'info', decision.note, { verbose: true })
     for (const other of decision.preempts) {
       reservations.release(other)
-      d.cranes = d.cranes.map((c) =>
+      d.agvs = d.agvs.map((c) =>
         c.id === other && c.mode === 'moving'
-          ? { ...c, path: null, mode: 'idle', holdReason: `Yielded to ${crane.id}` }
+          ? { ...c, path: null, mode: 'idle', holdReason: `Yielded to ${agv.id}` }
           : c,
       )
     }
   }
 
-  if (crane.carrying) {
+  if (agv.carrying) {
     d.route = {
-      craneId: crane.id,
+      agvId: agv.id,
       path: chosen,
       explored: (path as PathOk).explored,
       cost: path.cost,
@@ -948,7 +1071,7 @@ function beginMove(d: Draft, crane: Crane, goal: Cell): Crane {
   }
 
   return {
-    ...crane,
+    ...agv,
     mode: 'moving',
     path: chosen,
     pathIndex: 0,
@@ -958,10 +1081,10 @@ function beginMove(d: Draft, crane: Crane, goal: Cell): Crane {
   }
 }
 
-function advance(crane: Crane, dt: number): Crane {
-  const path = crane.path!
-  let idx = crane.pathIndex
-  let t = crane.segT + dt / MINUTES_PER_CELL
+function advance(agv: Agv, dt: number): Agv {
+  const path = agv.path!
+  let idx = agv.pathIndex
+  let t = agv.segT + dt / MINUTES_PER_CELL
 
   while (t >= 1 && idx < path.length - 1) {
     t -= 1
@@ -971,14 +1094,14 @@ function advance(crane: Crane, dt: number): Crane {
   if (idx >= path.length - 1) {
     const end = path[path.length - 1]
     return {
-      ...crane,
+      ...agv,
       cell: end,
       pos: cellCenter(end),
       path: null,
       pathIndex: 0,
       segT: 0,
       mode: 'idle',
-      legs: crane.legs.slice(1),
+      legs: agv.legs.slice(1),
     }
   }
 
@@ -987,7 +1110,7 @@ function advance(crane: Crane, dt: number): Crane {
   const ca = cellCenter(a)
   const cb = cellCenter(b)
   return {
-    ...crane,
+    ...agv,
     cell: a,
     pathIndex: idx,
     segT: t,
@@ -996,29 +1119,33 @@ function advance(crane: Crane, dt: number): Crane {
   }
 }
 
-function completeLift(d: Draft, crane: Crane): Crane {
-  const leg = crane.legs[0]
-  const rest = crane.legs.slice(1)
-  if (!leg) return { ...crane, mode: 'idle', liftT: 0 }
+function completeLift(d: Draft, agv: Agv): Agv {
+  const leg = agv.legs[0]
+  const rest = agv.legs.slice(1)
+  if (!leg) return { ...agv, mode: 'idle', liftT: 0 }
 
   if (leg.kind === 'collect') {
     d.gateQueue = d.gateQueue.filter((id) => id !== leg.containerId)
     patchContainer(d, leg.containerId, { status: 'retrieving' })
-    return { ...crane, mode: 'idle', liftT: 0, carrying: leg.containerId, legs: rest }
+    return { ...agv, mode: 'idle', liftT: 0, carrying: leg.containerId, legs: rest }
   }
 
   if (leg.kind === 'hoist') {
     const stacks = touchStacks(d)
     stacks[leg.slot] = stacks[leg.slot].filter((id) => id !== leg.containerId)
     patchContainer(d, leg.containerId, { status: 'retrieving', slot: null, tier: null })
-    return { ...crane, mode: 'idle', liftT: 0, carrying: leg.containerId, legs: rest }
+    return { ...agv, mode: 'idle', liftT: 0, carrying: leg.containerId, legs: rest }
   }
 
   if (leg.kind === 'lower') {
     const box = d.containers[leg.containerId]
     const snap = snapshotOf(d)
     const targetTier = Math.min(d.stacks[leg.slot].length, yardConfig.tiers - 1) as Tier
-    const illegal = checkConstraints(box, leg.slot, targetTier, snap)
+    const illegal = isBufferSlot(leg.slot)
+      ? d.stacks[leg.slot].length > 0
+        ? { rule: 'capacity', reason: `Transfer pad ${leg.slot} is occupied.` }
+        : null
+      : checkConstraints(box, leg.slot, targetTier, snap)
     if (illegal) {
       // The slot changed under us mid-flight. Re-run the allocator rather than
       // forcing an illegal stack — and say so in the log.
@@ -1027,14 +1154,11 @@ function completeLift(d: Draft, crane: Crane): Crane {
         (c) => c.slot !== leg.slot && d.stacks[c.slot].length < yardConfig.tiers,
       )
       if (next) {
-        log(
-          d,
-          'warn',
-          `${leg.slot} taken while ${box.id} was in the air (${illegal.reason}) — re-allocated to ${next.slot}.`,
-          box.id,
-        )
+        log(d, 'warn', `${leg.slot} was taken while ${shortId(box.id)} was in the air — moved to ${
+          next.slot
+        }.`, { ref: box.id, verbose: true, detail: illegal.reason })
         return {
-          ...crane,
+          ...agv,
           mode: 'idle',
           liftT: 0,
           legs: [
@@ -1046,16 +1170,13 @@ function completeLift(d: Draft, crane: Crane): Crane {
       }
       // Nowhere legal to set it down. Keep hold of it and try again shortly
       // rather than bouncing it back to the gate, which would loop forever.
-      if (crane.holdReason !== NO_SLOT_HOLD) {
-        log(
-          d,
-          'critical',
-          `${crane.id} is holding ${box.id} — no legal slot free. Waiting for the yard to drain.`,
-          box.id,
-        )
+      if (agv.holdReason !== NO_SLOT_HOLD) {
+        log(d, 'critical', `${agv.id} is still holding ${shortId(box.id)} — no legal position free.`, {
+          ref: box.id,
+        })
       }
       return {
-        ...crane,
+        ...agv,
         mode: 'held',
         liftT: 0,
         holdUntil: d.now + PLACEMENT_RETRY,
@@ -1072,11 +1193,15 @@ function completeLift(d: Draft, crane: Crane): Crane {
     patchContainer(d, leg.containerId, { status: 'stored', slot: leg.slot, tier })
     if (firstStorage) d.metrics = { ...d.metrics, stored: d.metrics.stored + 1 }
     const c = d.containers[leg.containerId]
-    log(d, 'good', `${c.id} set down at ${leg.slot} tier ${tier}.`, c.id)
-    return { ...crane, mode: 'idle', liftT: 0, carrying: null, legs: rest }
+    log(d, 'good', `${shortId(c.id)} set down at ${leg.slot}.`, {
+      ref: c.id,
+      verbose: true,
+      detail: `Tier ${tier}.`,
+    })
+    return { ...agv, mode: 'idle', liftT: 0, carrying: null, legs: rest }
   }
 
-  if (leg.kind !== 'depart') return { ...crane, mode: 'idle', liftT: 0 }
+  if (leg.kind !== 'depart') return { ...agv, mode: 'idle', liftT: 0 }
 
   const c = d.containers[leg.containerId]
   patchContainer(d, leg.containerId, { status: 'departed', slot: null, tier: null })
@@ -1090,17 +1215,17 @@ function completeLift(d: Draft, crane: Crane): Crane {
   naiveStacks = Object.fromEntries(
     Object.entries(naiveStacks).map(([k, v]) => [k, v.filter((id) => id !== c.id)]),
   )
-  log(d, 'good', `${c.id} loaded to ${c.vessel} for ${c.destination}.`, c.id)
+  log(d, 'good', `${shortId(c.id)} loaded onto ${c.vessel} for ${c.destination}.`, { ref: c.id })
   if (d.rehandleChain.length) d.rehandleChain = []
-  return { ...crane, mode: 'idle', liftT: 0, carrying: null, legs: rest }
+  return { ...agv, mode: 'idle', liftT: 0, carrying: null, legs: rest }
 }
 
 function resolveDeadlocks(d: Draft): void {
-  const held = d.cranes.filter((c) => c.mode === 'held' && c.holdReason?.startsWith('Holding for'))
+  const held = d.agvs.filter((c) => c.mode === 'held' && c.holdReason?.startsWith('Holding for'))
   if (held.length < 2) return
   const waitingFor: Record<string, string | null> = {}
   const priorities: Record<string, number> = {}
-  for (const c of d.cranes) {
+  for (const c of d.agvs) {
     priorities[c.id] = c.priority
     const match = c.holdReason?.match(/Holding for (\S+)/)
     waitingFor[c.id] = c.mode === 'held' && match ? match[1] : null
@@ -1108,16 +1233,14 @@ function resolveDeadlocks(d: Draft): void {
   const dl = detectDeadlock(waitingFor, priorities)
   if (!dl) return
   reservations.release(dl.yielder)
-  d.cranes = d.cranes.map((c) =>
+  d.agvs = d.agvs.map((c) =>
     c.id === dl.yielder
       ? { ...c, mode: 'held', holdUntil: d.now + MINUTES_PER_CELL * 4, holdReason: 'Yielding — deadlock' }
       : c,
   )
-  log(
-    d,
-    'critical',
-    `Deadlock ${dl.cycle.join(' ⇄ ')} — ${dl.yielder} forced to yield, lower cargo priority.`,
-  )
+  log(d, 'critical', `${dl.cycle.join(' and ')} were blocking each other — ${dl.yielder} gave way.`, {
+    detail: 'Deadlock broken by forcing the lower-priority vehicle to yield.',
+  })
 }
 
 function stackCells(d: Draft): Set<string> {
@@ -1154,12 +1277,12 @@ export function priorityWith(
 }
 
 /**
- * Stable key of every container a crane is currently working. Returned as a
+ * Stable key of every container an AGV is currently working. Returned as a
  * string so subscribers re-render when the set changes, not on every frame.
  */
 export function assignedKey(s: YardState): string {
   const ids: string[] = []
-  for (const c of s.cranes) {
+  for (const c of s.agvs) {
     if (c.carrying) ids.push(c.carrying)
     for (const l of c.legs) if (l.kind !== 'move') ids.push(l.containerId)
   }
