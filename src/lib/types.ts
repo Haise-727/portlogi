@@ -21,7 +21,7 @@ export type Container = {
   status: ContainerStatus
 }
 
-/** A cell in the crane movement grid (aisles + slot cells). */
+/** A cell in the AGV movement grid (aisles + slot cells). */
 export type Cell = { x: number; y: number }
 
 export type EventSeverity = 'info' | 'action' | 'warn' | 'critical' | 'good'
@@ -31,7 +31,14 @@ export type YardEvent = {
   /** sim-minutes */
   at: number
   severity: EventSeverity
+  /** one plain sentence, readable by someone who has never seen a port */
   message: string
+  /** engineering detail — scores, costs, rules. Shown only in detail mode. */
+  detail?: string
+  /** true for machine-level chatter that is hidden unless detail mode is on */
+  verbose?: boolean
+  /** consecutive repeats of the same line, collapsed */
+  count?: number
   /** container id, if the event is about one */
   ref?: string
 }
