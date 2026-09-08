@@ -58,7 +58,7 @@ export function Legend() {
               'repeating-linear-gradient(90deg, var(--color-signal) 0 4px, transparent 4px 7px)',
           }}
         />
-        <span className="text-[10px] text-ink-2">Crane route</span>
+        <span className="text-[10px] text-ink-2">AGV route</span>
       </span>
 
       <span className="flex items-center gap-[5px]">
@@ -72,8 +72,16 @@ export function Legend() {
         <span className="text-[10px] text-ink-2">Illegal for this box — hover for the rule</span>
       </span>
 
+      <span className="flex items-center gap-[5px]">
+        <span
+          className="h-[10px] w-[14px] border border-dashed border-line"
+          style={{ borderRadius: 2 }}
+        />
+        <span className="text-[10px] text-ink-2">Transfer pad — temporary set-down</span>
+      </span>
+
       <span className="ml-auto text-[10px] text-ink-3">
-        Tier 1 sits up-left of tier 0. Click a box for its file.
+        Striped red edge = overdue. Click a box for its file.
       </span>
     </div>
   )

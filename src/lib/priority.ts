@@ -61,6 +61,8 @@ export type PriorityFactor = {
 export type PriorityResult = {
   band: PriorityBand
   score: number
+  /** the departure has already passed — shown separately from the band */
+  overdue: boolean
   /** the single factor that drove the band, for one-line display */
   reason: string
   factors: PriorityFactor[]
@@ -88,7 +90,7 @@ export function computePriority(
       points: urgencyRaw * PRIORITY_WEIGHTS.urgency,
       detail:
         minutesToEtd <= 0
-          ? 'ETD passed — overdue'
+          ? `Overdue by ${formatMinutes(-minutesToEtd)}`
           : `ETD in ${formatMinutes(minutesToEtd)}`,
     },
     {
@@ -123,10 +125,21 @@ export function computePriority(
   ]
 
   const score = round(factors.reduce((sum, f) => sum + f.points, 0))
-  const band = bandFor(score)
-  const driver = factors.reduce((a, b) => (b.points > a.points ? b : a))
+  const overdue = minutesToEtd <= 0
 
-  return { band, score, reason: driver.points > 0 ? driver.detail : 'Routine cargo', factors }
+  // A box that has missed its departure is critical whatever the arithmetic
+  // says. The weighted score tops out below the critical threshold for a plain
+  // dry box, which would leave genuinely late cargo sitting in the 'high' band
+  // looking like everything else.
+  const band = overdue ? 'critical' : bandFor(score)
+  const driver = factors.reduce((a, b) => (b.points > a.points ? b : a))
+  const reason = overdue
+    ? `Overdue by ${formatMinutes(-minutesToEtd)}`
+    : driver.points > 0
+      ? driver.detail
+      : 'Routine cargo'
+
+  return { band, score, overdue, reason, factors }
 }
 
 export function bandFor(score: number): PriorityBand {

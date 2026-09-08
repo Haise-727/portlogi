@@ -12,6 +12,8 @@ type Props = {
   selected?: boolean
   /** in the dig-out chain: this box only moves because it is in the way */
   flagged?: boolean
+  /** departure already missed */
+  overdue?: boolean
   onClick?: () => void
   /** carried boxes skip the descend animation, they are already in motion */
   carried?: boolean
@@ -29,6 +31,7 @@ export function ContainerBlock({
   tier,
   selected,
   flagged,
+  overdue,
   onClick,
   carried,
 }: Props) {
@@ -59,13 +62,27 @@ export function ContainerBlock({
             : 'none',
         outlineOffset: 2,
       }}
-      title={`${container.id} · ${container.destination} · ${container.weight}t`}
+      title={`${container.id} · ${container.destination} · ${container.weight}t${
+        overdue ? ' · OVERDUE' : ''
+      }`}
     >
       <span
         aria-hidden
         className="absolute inset-y-0 left-0 w-[3px]"
-        style={{ background: colour }}
+        style={{
+          background: overdue
+            ? `repeating-linear-gradient(135deg, var(--color-critical) 0 3px, color-mix(in srgb, var(--color-critical) 30%, var(--color-void)) 3px 6px)`
+            : colour,
+        }}
       />
+
+      {overdue && (
+        <span
+          aria-hidden
+          className="flag-pulse pointer-events-none absolute inset-0"
+          style={{ boxShadow: 'inset 0 0 0 1px var(--color-critical)', borderRadius: 2 }}
+        />
+      )}
       {/* Destination sits in the top strip, which the box above covers when the
           stack is two high; the identity strip at the bottom always stays visible. */}
       <span className="flex items-start justify-between gap-1 pt-[3px] pl-[7px] pr-[4px]">

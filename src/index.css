@@ -76,7 +76,23 @@
   }
 }
 
+@keyframes flag-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.28;
+  }
+}
+
 @layer utilities {
+  /* Overdue marker. Opacity only, so it never triggers layout or paint of the
+     yard beneath it, and the reduced-motion block below stops it dead. */
+  .flag-pulse {
+    animation: flag-pulse 1.6s ease-in-out infinite;
+  }
+
   /* machine-token label: caps are the real convention for slot ids and band names */
   .token {
     font-family: var(--font-mono);

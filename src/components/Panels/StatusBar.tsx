@@ -1,7 +1,7 @@
 import { Activity, Pause } from 'lucide-react'
 import { formatClock } from '../../lib/simulation'
 import { SLOT_IDS, yardConfig } from '../../lib/yardConfig'
-import { useYard } from '../../store/yardStore'
+import { priorityWith, useYard } from '../../store/yardStore'
 
 export function StatusBar() {
   const now = useYard((s) => Math.floor(s.now * 60) / 60)
@@ -9,6 +9,12 @@ export function StatusBar() {
   const auto = useYard((s) => s.auto)
   const speed = useYard((s) => s.speed)
   const stacks = useYard((s) => s.stacks)
+  const overdue = useYard((s) => {
+    const at = Math.floor(s.now)
+    return Object.values(s.containers).filter(
+      (c) => c.status === 'stored' && priorityWith(c, at, s.vessels).overdue,
+    ).length
+  })
 
   const used = SLOT_IDS.reduce((a, s) => a + stacks[s].length, 0)
   const cap = SLOT_IDS.length * yardConfig.tiers
@@ -25,6 +31,17 @@ export function StatusBar() {
 
       <span className="ml-auto flex items-center gap-3">
         <Readout label="OCCUPANCY" value={`${used}/${cap}`} />
+        {overdue > 0 && (
+          <span className="flex items-baseline gap-[5px]">
+            <span className="font-mono text-[9px] tracking-[0.08em] text-ink-3">OVERDUE</span>
+            <span
+              className="font-mono text-[11px] tabular-nums"
+              style={{ color: 'var(--color-critical)' }}
+            >
+              {overdue}
+            </span>
+          </span>
+        )}
         <Readout label="MODE" value={auto ? 'AUTO' : 'MANUAL'} tint={auto} />
         <Readout label="RATE" value={`${speed}x`} />
         <span className="flex items-center gap-[5px] font-mono text-[12px] tabular-nums text-ink">

@@ -3,10 +3,19 @@ import { AnimatePresence, motion } from 'motion/react'
 import { YARD_H, YARD_W, cellCenter, slotRect } from '../../lib/geometry'
 import { shortId } from '../../lib/generator'
 import type { Container, PriorityBand } from '../../lib/types'
-import { GATE_CELL, GRID_H, GRID_W, QUAY_CELL, SLOT_IDS, isPoweredSlot } from '../../lib/yardConfig'
+import {
+  BUFFER_SLOTS,
+  GATE_CELL,
+  GRID_H,
+  GRID_W,
+  QUAY_CELL,
+  SLOT_IDS,
+  isPoweredSlot,
+  slotToCell,
+} from '../../lib/yardConfig'
 import { priorityWith, useYard } from '../../store/yardStore'
 import { BAND_COLOR } from '../ui'
-import { CraneLayer } from './CraneLayer'
+import { AgvLayer } from './AgvLayer'
 import { PlanOverlay } from './PlanOverlay'
 import { RouteOverlay } from './RouteOverlay'
 import { Slot } from './Slot'
@@ -42,7 +51,8 @@ export function YardGrid() {
     return () => clearTimeout(t)
   }, [seq])
 
-  const bandOf = (c: Container): PriorityBand => priorityWith(c, nowBucket, vessels).band
+  const priorityOf = (c: Container) => priorityWith(c, nowBucket, vessels)
+  const bandOf = (c: Container): PriorityBand => priorityOf(c).band
 
   const chain = new Set(chainKey ? chainKey.split(',') : [])
   const candidateScores = new Map<string, number>()
@@ -62,6 +72,7 @@ export function YardGrid() {
         <AisleMarkings />
         <GateApron queue={gateQueue.map((id) => containers[id]).filter(Boolean)} bandOf={bandOf} />
         <QuayApron />
+        <TransferPads stacks={stacks} containers={containers} />
 
         {SLOT_IDS.map((slot) => {
           const r = slotRect(slot)
@@ -81,6 +92,7 @@ export function YardGrid() {
                 slot={slot}
                 stack={stack}
                 bands={stack.map(bandOf)}
+                overdues={stack.map((c) => priorityOf(c).overdue)}
                 selected={selected}
                 chosen={flash && allocation?.best?.slot === slot}
                 candidateScore={candidateScores.get(slot) ?? null}
@@ -96,7 +108,7 @@ export function YardGrid() {
 
         <PlanOverlay plan={pendingPlan} />
         <RouteStage />
-        <CraneStage bandOf={bandOf} />
+        <AgvStage bandOf={bandOf} />
 
         <AnimatePresence>
           {hoveredSlot && (
@@ -114,15 +126,15 @@ export function YardGrid() {
   )
 }
 
-/** Cranes move every frame, so they subscribe on their own and the grid does not. */
-function CraneStage({ bandOf }: { bandOf: (c: Container) => PriorityBand }) {
-  const cranes = useYard((s) => s.cranes)
+/** Agvs move every frame, so they subscribe on their own and the grid does not. */
+function AgvStage({ bandOf }: { bandOf: (c: Container) => PriorityBand }) {
+  const agvs = useYard((s) => s.agvs)
   const containers = useYard((s) => s.containers)
-  return <CraneLayer cranes={cranes} containers={containers} bandOf={bandOf} />
+  return <AgvLayer agvs={agvs} containers={containers} bandOf={bandOf} />
 }
 
 /**
- * The route is drawn while a box is actually travelling it. Once the crane has
+ * The route is drawn while a box is actually travelling it. Once the AGV has
  * set the box down the line comes off the yard, though the inspector keeps its
  * cost, turns and expanded-node count.
  */
@@ -130,12 +142,12 @@ function RouteStage() {
   const route = useYard((s) => s.route)
   const showExplored = useYard((s) => s.showExplored)
   const live = useYard((s) =>
-    s.cranes.some((c) => c.id === s.route?.craneId && c.carrying !== null),
+    s.agvs.some((c) => c.id === s.route?.agvId && c.carrying !== null),
   )
   return <RouteOverlay route={live ? route : null} showExplored={showExplored} />
 }
 
-/** The aisle network the cranes run in, drawn as paved lanes so the movement
+/** The aisle network the AGVs run in, drawn as paved lanes so the movement
  *  grid is legible before anything starts moving. */
 function AisleMarkings() {
   const LANE = 17
@@ -222,6 +234,55 @@ function GateApron({
           <span className="font-mono text-[8px] text-ink-3">+{queue.length - 5}</span>
         )}
       </div>
+    </>
+  )
+}
+
+/**
+ * The two set-down pads on the quay apron. They are the reason a dig-out can
+ * never be impossible, so they are drawn rather than left implicit.
+ */
+function TransferPads({
+  stacks,
+  containers,
+}: {
+  stacks: Record<string, string[]>
+  containers: Record<string, Container>
+}) {
+  return (
+    <>
+      {BUFFER_SLOTS.map((pad) => {
+        const c = containers[stacks[pad]?.[0] ?? '']
+        const p = cellCenter(slotToCell(pad))
+        return (
+          <div
+            key={pad}
+            className="absolute flex -translate-x-1/2 -translate-y-1/2 items-center gap-[5px] border px-[5px] py-[3px]"
+            style={{
+              left: `${(p.x / YARD_W) * 100}%`,
+              top: `${(p.y / YARD_H) * 100}%`,
+              borderColor: c ? 'var(--color-high)' : 'var(--color-line)',
+              background: 'var(--color-void)',
+              borderStyle: c ? 'solid' : 'dashed',
+              borderRadius: 2,
+            }}
+            title={
+              c
+                ? `Transfer pad ${pad} — ${c.id} set down while another box is dug out`
+                : `Transfer pad ${pad} — free`
+            }
+          >
+            <span className="token text-[8px] leading-none text-ink-3">{pad}</span>
+            {c ? (
+              <span className="font-mono text-[8px] leading-none" style={{ color: 'var(--color-high)' }}>
+                {shortId(c.id)}
+              </span>
+            ) : (
+              <span className="text-[8px] leading-none text-ink-3">transfer pad</span>
+            )}
+          </div>
+        )
+      })}
     </>
   )
 }

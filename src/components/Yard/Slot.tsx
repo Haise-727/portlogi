@@ -15,6 +15,7 @@ type Props = {
   slot: string
   stack: Container[]
   bands: PriorityBand[]
+  overdues: boolean[]
   selected: string | null
   chosen: boolean
   candidateScore: number | null
@@ -29,6 +30,7 @@ export function Slot({
   slot,
   stack,
   bands,
+  overdues,
   selected,
   chosen,
   candidateScore,
@@ -105,6 +107,7 @@ export function Slot({
           tier={tier}
           selected={selected === c.id}
           flagged={chain.has(c.id)}
+          overdue={overdues[i]}
           onClick={() => onSelect(c.id)}
           style={{
             left: `${TIER_POS[tier].left}%`,

@@ -171,6 +171,14 @@ export function RetrievalQueue() {
                       <span className="flex items-baseline gap-[5px]">
                         <span className="font-mono text-[10px] text-ink">{shortId(c.id)}</span>
                         <span className="token text-[9px] text-ink-3">{c.slot}</span>
+                        {p.overdue && (
+                          <span
+                            className="token text-[8px] leading-none"
+                            style={{ color: 'var(--color-critical)' }}
+                          >
+                            overdue
+                          </span>
+                        )}
                         {buried > 0 && (
                           <span
                             className="font-mono text-[9px]"
@@ -180,7 +188,12 @@ export function RetrievalQueue() {
                           </span>
                         )}
                       </span>
-                      <span className="truncate text-[9px] text-ink-3">{p.reason}</span>
+                      <span
+                        className="truncate text-[9px]"
+                        style={{ color: p.overdue ? 'var(--color-critical)' : 'var(--color-ink-3)' }}
+                      >
+                        {p.reason}
+                      </span>
                     </span>
                     <span className="shrink-0 font-mono text-[10px] tabular-nums text-ink-2">
                       {queued ? '···' : Math.max(0, Math.round(c.etd - nowBucket)) + 'm'}
