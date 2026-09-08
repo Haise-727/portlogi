@@ -17,10 +17,13 @@ export type TickFn = (simMinutes: number) => void
 export class SimClock {
   private raf: number | null = null
   private last = 0
+  private readonly onTick: TickFn
   speed = 1
   running = false
 
-  constructor(private readonly onTick: TickFn) {}
+  constructor(onTick: TickFn) {
+    this.onTick = onTick
+  }
 
   start(): void {
     if (this.running) return

@@ -27,7 +27,7 @@ export const YIELD_PENALTY = MINUTES_PER_CELL * 4
 
 export type TimedCell = { key: string; cell: Cell; enter: number; exit: number }
 
-export type Reservation = TimedCell & { craneId: string; priority: number }
+export type Reservation = TimedCell & { craneId: string; priority: number; label: string }
 
 export type Conflict = {
   key: string
@@ -35,6 +35,8 @@ export type Conflict = {
   cell: Cell
   withCrane: string
   theirPriority: number
+  /** what the other crane is doing, so the log can say why we gave way */
+  theirLabel: string
   from: number
   to: number
 }
@@ -61,11 +63,11 @@ export function schedulePath(
 export class ReservationTable {
   private byCell = new Map<string, Reservation[]>()
 
-  reserve(craneId: string, priority: number, timed: TimedCell[]): void {
+  reserve(craneId: string, priority: number, timed: TimedCell[], label: string): void {
     this.release(craneId)
     for (const t of timed) {
       const list = this.byCell.get(t.key) ?? []
-      list.push({ ...t, craneId, priority })
+      list.push({ ...t, craneId, priority, label })
       this.byCell.set(t.key, list)
     }
   }
@@ -99,6 +101,7 @@ export class ReservationTable {
             cell: t.cell,
             withCrane: r.craneId,
             theirPriority: r.priority,
+            theirLabel: r.label,
             from: Math.max(t.enter, r.enter),
             to: Math.min(t.exit, r.exit),
           })
@@ -163,7 +166,7 @@ export type TrafficDecision =
 export type TrafficRequest = {
   craneId: string
   priority: number
-  /** human label for the log, e.g. "critical-priority TUTX 4410" */
+  /** human phrase for the log, e.g. "carrying critical-priority TUTX 4410" */
   cargoLabel: string
   start: Cell
   goal: Cell
@@ -198,7 +201,7 @@ export function resolveTraffic(req: TrafficRequest): TrafficDecision {
       timed,
       path: path.path,
       preempts: [...new Set(conflicts.filter((c) => c.theirPriority < priority).map((c) => c.withCrane))],
-      note: `${craneId} takes right of way at ${where} — carrying ${req.cargoLabel}.`,
+      note: `${craneId} takes right of way at ${where} — ${req.cargoLabel} outranks ${first.withCrane} ${first.theirLabel}.`,
     }
   }
 
@@ -221,7 +224,7 @@ export function resolveTraffic(req: TrafficRequest): TrafficDecision {
         timed: detourTimed,
         conflictWith: first.withCrane,
         extraCost: round(extra * 60),
-        reason: `${craneId} routes around ${where} — ${Math.round(extra * 60)}s detour beats a ${Math.round(waitCost * 60)}s wait behind ${first.withCrane}.`,
+        reason: `${craneId} routes around ${where} — a ${Math.round(extra * 60)}s detour beats a ${Math.round(waitCost * 60)}s wait behind ${first.withCrane}.`,
       }
     }
   }
@@ -232,7 +235,7 @@ export function resolveTraffic(req: TrafficRequest): TrafficDecision {
     seconds: Math.max(1, Math.round(waitCost * 60)),
     at: where,
     conflictWith: first.withCrane,
-    reason: `${craneId} held ${Math.max(1, Math.round(waitCost * 60))}s at ${where} — ${first.withCrane} carrying ${req.cargoLabel}.`,
+    reason: `${craneId} held ${Math.max(1, Math.round(waitCost * 60))}s at ${where} — ${first.withCrane} ${first.theirLabel}.`,
   }
 }
 

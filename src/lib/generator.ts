@@ -24,8 +24,20 @@ export type Destination = (typeof DESTINATIONS)[number]
 export type Vessel = {
   name: string
   destination: Destination
-  /** loading cutoff, in sim-minutes from t=0 */
+  /** first loading cutoff, in sim-minutes from t=0 */
   cutoff: number
+  /** the feeder comes back round on this interval */
+  period: number
+}
+
+/**
+ * Feeders rotate: once a cutoff passes, the next call is a period later. Without
+ * this every vessel deadline expires early in a long demo and the cutoff factor
+ * goes dead.
+ */
+export function nextCutoff(v: Vessel, now: number): number {
+  if (now <= v.cutoff) return v.cutoff
+  return v.cutoff + Math.ceil((now - v.cutoff) / v.period) * v.period
 }
 
 /** Plausible feeder-service names for this coast. */
@@ -97,8 +109,9 @@ export function createGenerator(seed: number): Generator {
   const vessels: Vessel[] = DESTINATIONS.map((d, i) => ({
     name: VESSEL_NAMES[d],
     destination: d,
-    // staggered loading windows across the shift
-    cutoff: 95 + i * 55,
+    // staggered loading windows, so some vessel is always closing
+    cutoff: 45 + i * 48,
+    period: 288,
   }))
 
   function pickType(): ContainerType {
@@ -125,10 +138,12 @@ export function createGenerator(seed: number): Generator {
       const destination = DESTINATIONS[Math.floor(rng() * DESTINATIONS.length)]
       const vessel = vessels.find((v) => v.destination === destination)!
 
-      // Departures cluster near the vessel cutoff, with spread either side, so
-      // stacks genuinely conflict rather than arriving in convenient order.
-      const jitter = (rng() - 0.45) * 150
-      const etd = Math.max(now + 25, Math.round(vessel.cutoff + jitter))
+      // Departures cluster around the vessel's next cutoff, spread either side,
+      // so stacks genuinely conflict rather than arriving in convenient order —
+      // and so the yard holds a live mix of urgent and relaxed cargo at all times.
+      const cutoff = nextCutoff(vessel, now)
+      const jitter = (rng() - 0.62) * 130
+      const etd = Math.max(now + 18, Math.round(cutoff + jitter))
 
       // Reefers and hazmat run heavier; fragile cargo runs light.
       const base =

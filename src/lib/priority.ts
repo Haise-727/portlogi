@@ -15,7 +15,7 @@ export const PRIORITY_WEIGHTS = {
 } as const
 
 /** Departures further out than this are not urgent at all. */
-export const URGENCY_HORIZON = 240 // sim-minutes
+export const URGENCY_HORIZON = 190 // sim-minutes
 /** Dwell at which a container is fully escalated (72h at demo scale). */
 export const DWELL_LIMIT = 4320 // sim-minutes
 /** A vessel cutoff inside this window pulls its cargo forward. */
