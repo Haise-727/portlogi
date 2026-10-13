@@ -1,0 +1,5 @@
+layout,positions,arrivals,vehicles,rehandles_opt,rehandles_naive,makespan_min,holds,wall_ms_per_run,finished,violations
+3×4 (12),12,24,2,0.9,5.3,307,20,42,12/12,0
+4×6 (24),24,48,4,2.8,22.8,386,71,167,12/12,0
+5×8 (40),40,80,5,5.7,36.7,506,221,561,12/12,0
+6×10 (60),60,120,6,7.1,56.7,625,326,1725,12/12,0

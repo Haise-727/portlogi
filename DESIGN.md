@@ -49,26 +49,28 @@ not an error. Desaturated across the board so the yard reads as one system under
 
 ## Layout
 
-Three zones, asymmetric, full viewport height, no page scroll:
+**Revision 2.** The first draft was three permanent zones (controls, yard, inspector and log).
+In use, most of that was idle most of the time, so the screen was inverted: the yard owns it, and
+everything else is summoned.
 
 ```
 ┌────────────────────────────────────────────────────────────┐
-│ status bar — port, sim clock, speed, mode                   │
-├──────────┬──────────────────────────────┬───────────────────┤
-│ controls │                              │  ALGORITHM        │
-│  scan    │        THE YARD              │  INSPECTOR        │
-│  retrieve│      (hero, centred,         │  score breakdown  │
-│  auto    │       everything else        │  runners-up       │
-│  speed   │       is quiet)              │  rejections       │
-│          │                              │  A* cost          │
-│ metrics  │  gate ▸ grid ▸ quay          ├───────────────────┤
-│          │                              │  EVENT LOG        │
-└──────────┴──────────────────────────────┴───────────────────┘
-   288px              1fr                       384px
+│ PORTLOGI   in yard · out · rehandles · busy   clock ▸ ⏸ 1x… [Scan] [Auto] ☰ │  36px
+├────────────────────────────────────────────────────────────┤
+│                                                  ┌────────┐│
+│                                                  │ crate  ││  only when a crate
+│                  THE YARD                        │inspector││  is clicked; closable
+│            (centred, any size)                   └────────┘│
+│                                                            │
+│ ┌──────────────────────────┐                  ┌──────────┐ │
+│ │ three-line log           │ click → history  │ settings │ │  ☰ opens a right
+│ └──────────────────────────┘ + replay         │ sidebar  │ │  sidebar
+└────────────────────────────────────────────────────────────┘
 ```
 
-The yard owns the centre at a fixed aspect ratio so AGV, route overlay and slots share one
-coordinate space. Panels are separated by 1px rules, not by gaps, shadows or rounded cards.
+The yard is drawn from the layout (rows, columns, tiers, gates, quays) at a fixed aspect ratio, so
+vehicles, routes and slots share one coordinate space at any size. Panels are floating hairline
+surfaces rather than a fixed grid; nothing on screen is there unless it is useful right now.
 
 ## Principles
 

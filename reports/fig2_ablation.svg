@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" width="640" height="360" font-family="Times New Roman, serif">
+<rect width="640" height="360" fill="#fff"/>
+<text x="320" y="22" text-anchor="middle" font-size="13" font-weight="bold" fill="#111">Ablation: rehandles per run</text>
+<line x1="56" x2="624" y1="296" y2="296" stroke="#d8dde2" stroke-width="1"/><text x="48" y="299" text-anchor="end" font-size="10" fill="#333">0</text>
+<line x1="56" x2="624" y1="244.8" y2="244.8" stroke="#d8dde2" stroke-width="1"/><text x="48" y="247.8" text-anchor="end" font-size="10" fill="#333">2</text>
+<line x1="56" x2="624" y1="193.6" y2="193.6" stroke="#d8dde2" stroke-width="1"/><text x="48" y="196.6" text-anchor="end" font-size="10" fill="#333">4</text>
+<line x1="56" x2="624" y1="142.4" y2="142.4" stroke="#d8dde2" stroke-width="1"/><text x="48" y="145.4" text-anchor="end" font-size="10" fill="#333">6</text>
+<line x1="56" x2="624" y1="91.19999999999999" y2="91.19999999999999" stroke="#d8dde2" stroke-width="1"/><text x="48" y="94.19999999999999" text-anchor="end" font-size="10" fill="#333">8</text>
+<line x1="56" x2="624" y1="40" y2="40" stroke="#d8dde2" stroke-width="1"/><text x="48" y="43" text-anchor="end" font-size="10" fill="#333">10</text>
+<line x1="56" x2="56" y1="40" y2="296" stroke="#333"/>
+<line x1="56" x2="624" y1="296" y2="296" stroke="#333"/>
+<text transform="translate(14 168) rotate(-90)" text-anchor="middle" font-size="10" fill="#222">rehandles</text>
+<text x="96.57142857142857" y="312" text-anchor="middle" font-size="10" fill="#222">All terms</text>
+<rect x="73.57142857142857" y="244.16" width="43" height="51.84" fill="#00a7be"/><path d="M95.07142857142857 233.01426825464173V255.3057317453583M91.57142857142857 233.01426825464173h7M91.57142857142857 255.3057317453583h7" stroke="#111" stroke-width="1" fill="none"/><text x="95.07142857142857" y="229.01426825464173" text-anchor="middle" font-size="9" fill="#111">2.0</text>
+<text x="177.71428571428572" y="312" text-anchor="middle" font-size="10" fill="#222">No rehandle risk</text>
+<rect x="154.71428571428572" y="113.6" width="43" height="182.4" fill="#00a7be"/><path d="M176.21428571428572 99.43226958805184V127.76773041194818M172.71428571428572 99.43226958805184h7M172.71428571428572 127.76773041194818h7" stroke="#111" stroke-width="1" fill="none"/><text x="176.21428571428572" y="95.43226958805184" text-anchor="middle" font-size="9" fill="#111">7.1</text>
+<text x="258.85714285714283" y="312" text-anchor="middle" font-size="10" fill="#222">No travel</text>
+<rect x="235.85714285714283" y="248" width="43" height="48" fill="#00a7be"/><path d="M257.35714285714283 235.14622495918027V260.8537750408197M253.85714285714283 235.14622495918027h7M253.85714285714283 260.8537750408197h7" stroke="#111" stroke-width="1" fill="none"/><text x="257.35714285714283" y="231.14622495918027" text-anchor="middle" font-size="9" fill="#111">1.9</text>
+<text x="340" y="312" text-anchor="middle" font-size="10" fill="#222">No cluster</text>
+<rect x="317" y="239.04" width="43" height="56.96000000000001" fill="#00a7be"/><path d="M338.5 229.12004637231684V248.95995362768318M335 229.12004637231684h7M335 248.95995362768318h7" stroke="#111" stroke-width="1" fill="none"/><text x="338.5" y="225.12004637231684" text-anchor="middle" font-size="9" fill="#111">2.2</text>
+<text x="421.1428571428571" y="312" text-anchor="middle" font-size="10" fill="#222">No spread</text>
+<rect x="398.1428571428571" y="240.96" width="43" height="55.03999999999999" fill="#00a7be"/><path d="M419.6428571428571 230.24804997541386V251.67195002458612M416.1428571428571 230.24804997541386h7M416.1428571428571 251.67195002458612h7" stroke="#111" stroke-width="1" fill="none"/><text x="419.6428571428571" y="226.24804997541386" text-anchor="middle" font-size="9" fill="#111">2.1</text>
+<text x="502.2857142857142" y="312" text-anchor="middle" font-size="10" fill="#222">No aisle access</text>
+<rect x="479.2857142857142" y="235.84" width="43" height="60.16" fill="#00a7be"/><path d="M500.7857142857142 224.97843448900005V246.70156551099996M497.2857142857142 224.97843448900005h7M497.2857142857142 246.70156551099996h7" stroke="#111" stroke-width="1" fill="none"/><text x="500.7857142857142" y="220.97843448900005" text-anchor="middle" font-size="9" fill="#111">2.4</text>
+<text x="583.4285714285714" y="312" text-anchor="middle" font-size="10" fill="#222">Baseline</text>
+<rect x="560.4285714285714" y="116.80000000000001" width="43" height="179.2" fill="#00a7be"/><path d="M581.9285714285714 103.23605053204523V130.3639494679548M578.4285714285714 103.23605053204523h7M578.4285714285714 130.3639494679548h7" stroke="#111" stroke-width="1" fill="none"/><text x="581.9285714285714" y="99.23605053204523" text-anchor="middle" font-size="9" fill="#111">7.0</text>
+<rect x="56" y="338" width="10" height="10" fill="#00a7be"/><text x="71" y="347" font-size="10" fill="#222">Rehandles</text>
+</svg>

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" width="640" height="360" font-family="Times New Roman, serif">
+<rect width="640" height="360" fill="#fff"/>
+<text x="320" y="22" text-anchor="middle" font-size="13" font-weight="bold" fill="#111">Time to clear the yard by fleet size</text>
+<line x1="56" x2="624" y1="296" y2="296" stroke="#d8dde2" stroke-width="1"/><text x="48" y="299" text-anchor="end" font-size="10" fill="#333">0</text>
+<line x1="56" x2="624" y1="244.8" y2="244.8" stroke="#d8dde2" stroke-width="1"/><text x="48" y="247.8" text-anchor="end" font-size="10" fill="#333">100</text>
+<line x1="56" x2="624" y1="193.6" y2="193.6" stroke="#d8dde2" stroke-width="1"/><text x="48" y="196.6" text-anchor="end" font-size="10" fill="#333">200</text>
+<line x1="56" x2="624" y1="142.4" y2="142.4" stroke="#d8dde2" stroke-width="1"/><text x="48" y="145.4" text-anchor="end" font-size="10" fill="#333">300</text>
+<line x1="56" x2="624" y1="91.19999999999999" y2="91.19999999999999" stroke="#d8dde2" stroke-width="1"/><text x="48" y="94.19999999999999" text-anchor="end" font-size="10" fill="#333">400</text>
+<line x1="56" x2="624" y1="40" y2="40" stroke="#d8dde2" stroke-width="1"/><text x="48" y="43" text-anchor="end" font-size="10" fill="#333">500</text>
+<line x1="56" x2="56" y1="40" y2="296" stroke="#333"/>
+<line x1="56" x2="624" y1="296" y2="296" stroke="#333"/>
+<text transform="translate(14 168) rotate(-90)" text-anchor="middle" font-size="10" fill="#222">sim-minutes</text>
+<text x="150.66666666666669" y="312" text-anchor="middle" font-size="10" fill="#222">1 vehicle</text>
+<rect x="127.66666666666669" y="106.04160000000002" width="43" height="189.95839999999998" fill="#00a7be"/><path d="M149.16666666666669 100.40396146553249V111.67923853446752M145.66666666666669 100.40396146553249h7M145.66666666666669 111.67923853446752h7" stroke="#111" stroke-width="1" fill="none"/><text x="149.16666666666669" y="96.40396146553249" text-anchor="middle" font-size="9" fill="#111">371</text>
+<text x="340" y="312" text-anchor="middle" font-size="10" fill="#222">2 vehicles</text>
+<rect x="317" y="123.56633600000004" width="43" height="172.43366399999996" fill="#00a7be"/><path d="M338.5 118.33113974631073V128.80153225368937M335 118.33113974631073h7M335 128.80153225368937h7" stroke="#111" stroke-width="1" fill="none"/><text x="338.5" y="114.33113974631073" text-anchor="middle" font-size="9" fill="#111">337</text>
+<text x="529.3333333333334" y="312" text-anchor="middle" font-size="10" fill="#222">3 vehicles</text>
+<rect x="506.33333333333337" y="124.99686399999996" width="43" height="171.00313600000004" fill="#00a7be"/><path d="M527.8333333333334 120.10404380828845V129.88968419171147M524.3333333333334 120.10404380828845h7M524.3333333333334 129.88968419171147h7" stroke="#111" stroke-width="1" fill="none"/><text x="527.8333333333334" y="116.10404380828845" text-anchor="middle" font-size="9" fill="#111">334</text>
+<rect x="56" y="338" width="10" height="10" fill="#00a7be"/><text x="71" y="347" font-size="10" fill="#222">Makespan</text>
+</svg>

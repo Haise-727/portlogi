@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" width="640" height="360" font-family="Times New Roman, serif">
+<rect width="640" height="360" fill="#fff"/>
+<text x="320" y="22" text-anchor="middle" font-size="13" font-weight="bold" fill="#111">Rehandles by yard size</text>
+<line x1="56" x2="624" y1="296" y2="296" stroke="#d8dde2" stroke-width="1"/><text x="48" y="299" text-anchor="end" font-size="10" fill="#333">0</text>
+<line x1="56" x2="624" y1="259.42857142857144" y2="259.42857142857144" stroke="#d8dde2" stroke-width="1"/><text x="48" y="262.42857142857144" text-anchor="end" font-size="10" fill="#333">10</text>
+<line x1="56" x2="624" y1="222.85714285714286" y2="222.85714285714286" stroke="#d8dde2" stroke-width="1"/><text x="48" y="225.85714285714286" text-anchor="end" font-size="10" fill="#333">20</text>
+<line x1="56" x2="624" y1="186.28571428571428" y2="186.28571428571428" stroke="#d8dde2" stroke-width="1"/><text x="48" y="189.28571428571428" text-anchor="end" font-size="10" fill="#333">30</text>
+<line x1="56" x2="624" y1="149.71428571428572" y2="149.71428571428572" stroke="#d8dde2" stroke-width="1"/><text x="48" y="152.71428571428572" text-anchor="end" font-size="10" fill="#333">40</text>
+<line x1="56" x2="624" y1="113.14285714285714" y2="113.14285714285714" stroke="#d8dde2" stroke-width="1"/><text x="48" y="116.14285714285714" text-anchor="end" font-size="10" fill="#333">50</text>
+<line x1="56" x2="624" y1="76.57142857142858" y2="76.57142857142858" stroke="#d8dde2" stroke-width="1"/><text x="48" y="79.57142857142858" text-anchor="end" font-size="10" fill="#333">60</text>
+<line x1="56" x2="624" y1="40" y2="40" stroke="#d8dde2" stroke-width="1"/><text x="48" y="43" text-anchor="end" font-size="10" fill="#333">70</text>
+<line x1="56" x2="56" y1="40" y2="296" stroke="#333"/>
+<line x1="56" x2="624" y1="296" y2="296" stroke="#333"/>
+<text transform="translate(14 168) rotate(-90)" text-anchor="middle" font-size="10" fill="#222">rehandles</text>
+<text x="127" y="312" text-anchor="middle" font-size="10" fill="#222">3×4 (12)</text>
+<rect x="81" y="276.4952380952381" width="43" height="19.504761904761892" fill="#c2557e"/><path d="M102.5 272.2332285156424V280.7572476748338M99 272.2332285156424h7M99 280.7572476748338h7" stroke="#111" stroke-width="1" fill="none"/><text x="102.5" y="268.2332285156424" text-anchor="middle" font-size="9" fill="#111">5.3</text>
+<rect x="127" y="292.64761904761906" width="43" height="3.3523809523809405" fill="#00a7be"/><path d="M148.5 291.2642233717694V294.03101472346873M145 291.2642233717694h7M145 294.03101472346873h7" stroke="#111" stroke-width="1" fill="none"/><text x="148.5" y="287.2642233717694" text-anchor="middle" font-size="9" fill="#111">0.9</text>
+<text x="269" y="312" text-anchor="middle" font-size="10" fill="#222">4×6 (24)</text>
+<rect x="223" y="212.8" width="43" height="83.19999999999999" fill="#c2557e"/><path d="M244.5 204.70739081668097V220.89260918331902M241 204.70739081668097h7M241 220.89260918331902h7" stroke="#111" stroke-width="1" fill="none"/><text x="244.5" y="200.70739081668097" text-anchor="middle" font-size="9" fill="#111">22.8</text>
+<rect x="269" y="285.6380952380952" width="43" height="10.361904761904782" fill="#00a7be"/><path d="M290.5 282.2399228475359V289.03626762865457M287 282.2399228475359h7M287 289.03626762865457h7" stroke="#111" stroke-width="1" fill="none"/><text x="290.5" y="278.2399228475359" text-anchor="middle" font-size="9" fill="#111">2.8</text>
+<text x="411" y="312" text-anchor="middle" font-size="10" fill="#222">5×8 (40)</text>
+<rect x="365" y="161.90476190476193" width="43" height="134.09523809523807" fill="#c2557e"/><path d="M386.5 149.44768936249773V174.36183444702607M383 149.44768936249773h7M383 174.36183444702607h7" stroke="#111" stroke-width="1" fill="none"/><text x="386.5" y="145.44768936249773" text-anchor="middle" font-size="9" fill="#111">36.7</text>
+<rect x="411" y="275.2761904761905" width="43" height="20.723809523809507" fill="#00a7be"/><path d="M432.5 268.89333181514615V281.65904913723483M429 268.89333181514615h7M429 281.65904913723483h7" stroke="#111" stroke-width="1" fill="none"/><text x="432.5" y="264.89333181514615" text-anchor="middle" font-size="9" fill="#111">5.7</text>
+<text x="553" y="312" text-anchor="middle" font-size="10" fill="#222">6×10 (60)</text>
+<rect x="507" y="88.76190476190476" width="43" height="207.23809523809524" fill="#c2557e"/><path d="M528.5 77.31439320663301V100.20941631717653M525 77.31439320663301h7M525 100.20941631717653h7" stroke="#111" stroke-width="1" fill="none"/><text x="528.5" y="73.31439320663301" text-anchor="middle" font-size="9" fill="#111">56.7</text>
+<rect x="553" y="270.0952380952381" width="43" height="25.904761904761926" fill="#00a7be"/><path d="M574.5 264.3460369948304V275.8444391956458M571 264.3460369948304h7M571 275.8444391956458h7" stroke="#111" stroke-width="1" fill="none"/><text x="574.5" y="260.3460369948304" text-anchor="middle" font-size="9" fill="#111">7.1</text>
+<rect x="56" y="338" width="10" height="10" fill="#c2557e"/><text x="71" y="347" font-size="10" fill="#222">First-available</text><rect x="186" y="338" width="10" height="10" fill="#00a7be"/><text x="201" y="347" font-size="10" fill="#222">Allocator</text>
+</svg>

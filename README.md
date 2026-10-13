@@ -1,122 +1,143 @@
 # portlogi
 
 Browser-based simulation of an automated container yard at **V.O. Chidambaranar Port,
-Thoothukudi**. It is the software half of a smart-cities project; the hardware rig — twelve
-slot buttons and three control keys on a 4×4 matrix keypad — carries the same A1–C4 slot
-legend, so the two halves read as one system.
+Thoothukudi**. It is the software half of a smart-cities project; an ESP32 with an RFID reader
+is the hardware half, and a card scanned at the rig admits that card's container at the gate on
+screen.
 
-The point of the thing is that the algorithms are *visible*. Every placement, route, priority
-band and traffic hold can be interrogated on screen while it happens.
+The point of the thing is that the algorithms are *visible*: every placement, route, priority
+band and traffic hold can be interrogated while it happens, and any moment can be replayed.
 
 ```bash
 npm install
-npm run dev      # http://localhost:5173
-npm run build    # production bundle
+npm run dev        # http://localhost:5173  (the whole app, no backend needed)
+npm run server     # optional: ESP32 bridge + experiments API on :8787
+npm test           # engine, traffic safety, replay, random-layout stress
+npm run report     # every number and figure for the written report -> reports/
+npm run build
 ```
 
-No backend, no network calls at runtime. Fonts are bundled, so it runs on a venue's wifi or
-none at all.
+No network calls happen unless the hardware feed is switched on. Fonts are bundled, so it runs
+on a venue's wifi or none at all.
 
-## The yard
+## The screen
+
+The yard owns the screen. Everything else is something you summon.
+
+| You see | Behind it |
+|---|---|
+| The yard, a thin top bar, a three-line log | |
+| Four figures in the bar (in yard, out, rehandles, busy) | Click them for the full metrics |
+| | **☰ Settings** (right sidebar): Run, Layout, Boxes, Tuning |
+| | **Click a crate** for its inspector (Details, Why here). Close with the X or `Esc` |
+| | **Click the log** to open the full history. Click any line and the yard rewinds to that moment; scrub, play on, or go back to live |
+| | **Optimised vs first-available**: the experiment, run 40+ times in a worker |
+
+`S` scan · `A` auto · `space` pause · `1`–`5` speed · `M` settings · `L` log · `C` compare · `Esc` close the top layer
+
+### Editing the yard while it runs
+
+- **Layout tab**: 1–8 rows, 1–10 columns, 1–4 tiers, any number of gates and quays on the top
+  and bottom edges, transfer pads, and a per-position toggle (dry, powered, out of service).
+  Aisles are generated, so any layout stays drivable. Applying a layout while vehicles are
+  working pauses new arrivals and applies it the moment they are free. It is refused if it would
+  leave a stored box without a position.
+- **A crate's inspector**: change its type (a reefer needs a powered slot; if the box is in the
+  wrong place it is relocated automatically), name a group, **Retrieve**, or **Move to…** and
+  click any legal slot (illegal slots are hatched, with the rule on hover).
+- **Boxes tab**: tick several boxes and name them as a group; the allocator keeps a group together.
+- **Run tab**: scan at a specific gate, and one-click scenarios: vessel surge, gate burst, reefer
+  storm, cutoff rush, vehicle breakdown.
+- **Tuning tab**: the allocator's five weights and the vehicles' handling times, live.
+
+## How it works
 
 ```
-                  ┌── GATE (entry) ──┐
-                  ▼
-          ┌─────┬─────┬─────┬─────┐
-     Row A│ A1  │ A2  │ A3  │ A4  │   ← powered bank, reefers only
-          ├─────┼─────┼─────┼─────┤
-     Row B│ B1  │ B2  │ B3  │ B4  │
-          ├─────┼─────┼─────┼─────┤
-     Row C│ C1  │ C2  │ C3  │ C4  │
-          └─────┴─────┴─────┴─────┘
-                       ▲
-                QUAY (exit, berth 3)
+src/engine/      pure TypeScript, no React, no timers, no globals
+  layout.ts        LayoutSpec -> Layout: grid, slots, gates, quays, pads, parking bays
+  allocator.ts     where a box goes (5 weighted terms, hard rules, a reason for each rejection)
+  priority.ts      which boxes go first (urgency, class, dwell, vessel cutoff)
+  pathfinder.ts    A* with a corner penalty; costMap prices the whole yard in one pass
+  traffic.ts       time-window reservations; the collision guarantee lives here
+  engine.ts        the simulation: fixed 0.01-minute step, commands in, events out
+  session.ts       command journal + checkpoints = deterministic replay
+  experiment.ts    headless runs and the allocator-vs-baseline comparison
+  invariants.ts    safety properties checked by the tests and the stress sweep
+src/store/       Zustand: owns the session, the clock and UI state
+src/components/  stage/ (the yard), chrome/ (bar, sidebar, inspector, log), ui/ (shadcn-style)
+server/          node:http backend: ESP32 bridge (SSE) and experiments
+scripts/         report generator
 ```
 
-Twelve ground slots, two tiers, twenty-four boxes, plus two transfer pads on the quay apron
-for temporary set-downs. Lift-AGVs — automated yard trucks with an onboard spreader — run the
-aisles between rows and the driveways down each side; they carry horizontally and lift on the
-spot, which is why one vehicle type covers both moving and stacking. Every dimension lives in [`src/lib/yardConfig.ts`](src/lib/yardConfig.ts) —
-change `rows`, `cols` or `tiers` there and the grid, the pathfinding graph and the rendered
-layout all follow.
+### Vehicles and traffic
 
-## The four algorithms
+A vehicle moves at constant speed (0.15 min per 100 drawing units, so a wide slot column takes longer to cross than a narrow aisle row), and **0.12 min more to take a corner**, spent pivoting in place at the corner cell (it is booked in the schedule; on screen the vehicle turns on the spot rather than slowing). It stands still while it
+lifts (0.6 min at a slot, 0.9 at the gate and quay, 2.2× slower for a dig-out), shown as a ring
+around it. Those times are configurable.
 
-All of `src/lib/` is pure TypeScript with no React import, so each piece can be explained and
-tested on its own. Every one returns a decision **and** the reasoning behind it.
+Every vehicle books the cells of its route for the exact windows it will occupy them, including
+the slower corners. The final cell is an open-ended claim: a parked or waiting vehicle holds its
+cell until it books a way out. A new route is checked against all bookings first; on a clash the
+vehicle waits for the window to clear or detours, whichever is cheaper. **There is no pre-emption**:
+a booking is honoured, so priority decides who is served first, never who is shoved aside.
+Because the simulation advances vehicles with the same per-segment times the schedule used, the
+windows are exact rather than estimates. Deadlocks (two vehicles waiting on each other, or one
+waiting on an idle vehicle) are broken by sending the lower-priority one to the nearest free cell
+that is off everyone else's route.
 
-| File | What it decides | How it justifies itself |
-|---|---|---|
-| [`allocator.ts`](src/lib/allocator.ts) | Which slot and tier an arriving box goes to | Five weighted terms, each with its own sentence, plus the rule that rejected every illegal slot |
-| [`priority.ts`](src/lib/priority.ts) | Which boxes get worked first | Urgency, handling class, dwell and vessel cutoff, and which of the four drove the band |
-| [`pathfinder.ts`](src/lib/pathfinder.ts) | How an AGV gets there | A\* path, its cost, its turns, and the nodes the search expanded |
-| [`traffic.ts`](src/lib/traffic.ts) | Who moves when two AGVs want the same cell | The reservation that clashed, whose cargo outranked whose, and whether waiting or detouring was cheaper |
+### Replay
+
+The engine is deterministic: same seed, layout and command sequence give the same yard. Every
+command is journalled, and a checkpoint is taken every simulated hour. Replaying to any moment
+restores the nearest checkpoint and re-runs the journal, so it costs at most an hour of steps.
 
 ### Best-position scoring
 
 `score(slot) = 40·rehandleRisk + 15·travel + 15·cluster + 12·spread + 18·access`, lowest wins.
-Each term is normalised to 0–1 before weighting so the bars in the inspector are comparable.
+**Rehandle risk is the core idea**: putting a box that leaves at t=100 on top of one that leaves at
+t=50 guarantees a wasted vehicle cycle later. Hard constraints reject a slot outright rather than
+penalising it, because *impossible* and *expensive* are different answers: tier-N needs tier N-1,
+a heavier box cannot sit on a lighter one, reefers need a plug, hazmat cannot touch hazmat.
 
-**Rehandle risk is the core idea**: putting a box that leaves at t=100 on top of one that
-leaves at t=50 guarantees a wasted AGV cycle later. **Aisle access** is measured rather than
-assumed — the router is re-run over the whole yard with the candidate cell treated as solid,
-so "this slot walls off the aisle" is a number.
+## Hardware bridge
 
-Hard constraints reject a slot outright instead of penalising it, because *impossible* and
-*expensive* are different answers: tier 1 needs tier 0 filled, a heavier box cannot sit on a
-lighter one, reefers need the powered bank, hazmat cannot touch hazmat.
-
-### What the comparison proves
-
-Comparison mode runs the same thirty arrivals twice from one seed — identical containers,
-weights, departures and arrival times, with slot choice the only variable. Across seeds the
-allocator cuts rehandles by 55–100%. Rehandles are counted at retrieval, where a terminal
-actually pays for them, not predicted at placement.
-
-The gate-blocked row is shown even though the allocator often loses it: refusing slots the
-naive rule would take means holding the gate longer, and that is the honest other half of the
-result.
-
-## Reading the screen
-
-- **Colour is priority** and nothing else — critical, high, normal, low.
-- **Icon is cargo type** — reefer, hazmat, fragile.
-- **Tier 1 offsets up-left** of tier 0 and casts a shadow onto it. The identity strip sits on
-  the bottom edge of every box, which the box above never covers.
-- **Hatched slots** are illegal for the box being placed; hover for the rule.
-- **The dashed cyan line is the real A\*** route, not a straight line between two points.
-- **Boxes with a striped red edge are overdue** — their departure has already passed. They are
-  forced to the critical band whatever the weighted score says.
-- **T1 and T2 on the quay apron are transfer pads**, where a box goes while whatever it was
-  sitting on top of is fetched.
-
-The activity log is plain by default, one sentence per event. The **detail** switch in its
-header adds the scores, costs and rules underneath each line, plus the vehicle-level traffic
-chatter that is hidden the rest of the time.
-
-### Presenter keys
-
-`S` scan · `A` auto mode · `C` comparison · `space` pause · `1`–`4` rate · `Esc` clear
-
-## Structure
+The rig only has to report a card's UID. An ESP32 sends:
 
 ```
-src/
-  lib/          algorithms and the simulation clock — no React anywhere
-  store/        Zustand: the clock, the job dispatcher, AGV execution
-  components/
-    Yard/       grid, slots, containers, AGVs, route and plan overlays
-    Panels/     controls, metrics, inspector, event log, container file
-    Comparison/ the headline result (lazy-loaded; Recharts is heavy)
+POST http://<laptop-ip>:8787/api/scan
+x-device-key: portlogi-dev            (set DEVICE_KEY in the environment to change it)
+content-type: application/json
+
+{ "uid": "04:A3:2F:91", "reader": "gate-1" }
 ```
+
+The backend validates it (8–20 hex characters, separators allowed), then pushes it to every open
+browser over `GET /api/events` (Server-Sent Events). With **Settings → Run → Hardware scanner**
+on, the page admits that card's container. A card always maps to the same container (the UID seeds
+the generator), and scanning a card that is already in the yard is reported rather than duplicated.
+
+Other endpoints: `GET /api/health`, `GET /api/scans`, `POST /api/experiments {seeds, arrivals}`.
+
+## Evidence
+
+`npm run report` runs the real engine headless and writes to `reports/`: the allocator-vs-baseline
+comparison over 100 seeds with confidence intervals, an ablation of each scoring term, scaling
+from 12 to 60 positions, fleet size, a randomised robustness sweep with safety invariants checked
+throughout, and a determinism check. Tables are CSV and `results.md`; figures are SVG.
+
+`npm test` covers the algorithms, the traffic rules, replay, and 24 random layouts under load.
+
+### Known limits
+
+- Very crowded yards can stall: in a 500-layout sweep, a handful of layouts with 4–5 vehicles in
+  large, tall yards stopped delivering. The editor therefore caps the fleet at about one vehicle per
+  five positions and never more than rows + 1. The default yard is unaffected.
+- Safety held in every run: no collision, illegal stack or lost box was ever observed.
+- Time is simulated: one real second is one sim-minute at 1×.
 
 ## Stack
 
-React + TypeScript + Vite, Tailwind v4, Motion for animation, Zustand for simulation state,
-Recharts in comparison mode only, lucide-react for icons.
+React 19 + TypeScript + Vite, Tailwind v4, Radix primitives with shadcn-style wrappers, Motion for
+animation, Zustand, Recharts (comparison dialog only, lazy-loaded), lucide icons. Vitest for tests.
 
-The simulation clock is a `requestAnimationFrame` loop with a speed multiplier rather than
-`setInterval`: it stays smooth, it drives the AGV interpolation off the real frame delta, and
-it pauses cleanly with the tab instead of banking up a backlog of missed intervals.
-
-Design rationale, including the critique pass, is in [DESIGN.md](DESIGN.md).
+Design rationale is in [DESIGN.md](DESIGN.md).

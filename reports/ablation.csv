@@ -1,0 +1,8 @@
+config,rehandles_mean,rehandles_ci95,cells_mean,makespan_mean
+All terms,2.02,0.44,861,342
+No rehandle risk,7.13,0.55,872,346
+No travel,1.88,0.50,866,343
+No cluster,2.23,0.39,852,342
+No spread,2.15,0.42,867,344
+No aisle access,2.35,0.42,885,348
+First-available (baseline),7.00,0.53,915,353

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" width="640" height="360" font-family="Times New Roman, serif">
+<rect width="640" height="360" fill="#fff"/>
+<text x="320" y="22" text-anchor="middle" font-size="13" font-weight="bold" fill="#111">Rehandles per run (mean, 95% CI)</text>
+<line x1="56" x2="624" y1="296" y2="296" stroke="#d8dde2" stroke-width="1"/><text x="48" y="299" text-anchor="end" font-size="10" fill="#333">0</text>
+<line x1="56" x2="624" y1="232" y2="232" stroke="#d8dde2" stroke-width="1"/><text x="48" y="235" text-anchor="end" font-size="10" fill="#333">2</text>
+<line x1="56" x2="624" y1="168" y2="168" stroke="#d8dde2" stroke-width="1"/><text x="48" y="171" text-anchor="end" font-size="10" fill="#333">4</text>
+<line x1="56" x2="624" y1="104" y2="104" stroke="#d8dde2" stroke-width="1"/><text x="48" y="107" text-anchor="end" font-size="10" fill="#333">6</text>
+<line x1="56" x2="624" y1="40" y2="40" stroke="#d8dde2" stroke-width="1"/><text x="48" y="43" text-anchor="end" font-size="10" fill="#333">8</text>
+<line x1="56" x2="56" y1="40" y2="296" stroke="#333"/>
+<line x1="56" x2="624" y1="296" y2="296" stroke="#333"/>
+<text transform="translate(14 168) rotate(-90)" text-anchor="middle" font-size="10" fill="#222">rehandles</text>
+<text x="340" y="312" text-anchor="middle" font-size="10" fill="#222">Rehandles</text>
+<rect x="294" y="80.32" width="43" height="215.68" fill="#c2557e"/><path d="M315.5 66.89999839371367V93.74000160628631M312 66.89999839371367h7M312 93.74000160628631h7" stroke="#111" stroke-width="1" fill="none"/><text x="315.5" y="62.89999839371367" text-anchor="middle" font-size="9" fill="#111">6.7</text>
+<rect x="340" y="230.4" width="43" height="65.6" fill="#00a7be"/><path d="M361.5 221.55809543803892V239.2419045619611M358 221.55809543803892h7M358 239.2419045619611h7" stroke="#111" stroke-width="1" fill="none"/><text x="361.5" y="217.55809543803892" text-anchor="middle" font-size="9" fill="#111">2.0</text>
+<rect x="56" y="338" width="10" height="10" fill="#c2557e"/><text x="71" y="347" font-size="10" fill="#222">First-available</text><rect x="186" y="338" width="10" height="10" fill="#00a7be"/><text x="201" y="347" font-size="10" fill="#222">Allocator</text>
+</svg>
