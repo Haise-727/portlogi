@@ -41,7 +41,7 @@ export function Terminals({
               className="absolute flex -translate-x-1/2 -translate-y-[130%] items-center gap-[5px]"
               style={at(g.cell)}
             >
-              <span className="token whitespace-nowrap text-[9px] leading-none text-ink-2">{g.id} · GATE</span>
+              <span className="token whitespace-nowrap text-t9 leading-none text-ink-2">{g.id} · GATE</span>
               <span className="h-[7px] w-[7px] rotate-45 border-b border-r border-ink-2" />
             </div>
             <div
@@ -57,7 +57,7 @@ export function Terminals({
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, scale: 0.8 }}
                     transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                    className="whitespace-nowrap border px-[3px] py-[2px] font-mono text-[8px] leading-none"
+                    className="whitespace-nowrap border px-[3px] py-[2px] font-mono text-t8 leading-none"
                     style={{
                       borderColor: `color-mix(in srgb, ${BAND_COLOR[bandOf(c)]} 60%, transparent)`,
                       background: `color-mix(in srgb, ${BAND_COLOR[bandOf(c)]} 14%, var(--color-void))`,
@@ -69,22 +69,42 @@ export function Terminals({
                   </motion.span>
                 ))}
               </AnimatePresence>
-              {queue.length > 4 && <span className="font-mono text-[8px] text-ink-3">+{queue.length - 4}</span>}
+              {queue.length > 4 && <span className="font-mono text-t8 text-ink-3">+{queue.length - 4}</span>}
             </div>
           </div>
         )
       })}
 
-      {layout.quays.map((q) => (
-        <div
-          key={q.id}
-          className="absolute flex -translate-x-1/2 -translate-y-1/2 items-center gap-[5px]"
-          style={at(q.cell)}
-        >
-          <span className="h-[7px] w-[7px] rotate-45 border-b border-r border-ink-2" />
-          <span className="token whitespace-nowrap text-[9px] leading-none text-ink-2">{q.id} · QUAY</span>
-        </div>
-      ))}
+      {layout.quays.map((q) => {
+        const waiting = (queues[q.id] ?? []).map((id) => containers[id]).filter(Boolean)
+        return (
+          <div key={q.id}>
+            <div className="absolute flex -translate-x-1/2 -translate-y-1/2 items-center gap-[5px]" style={at(q.cell)}>
+              <span className="h-[7px] w-[7px] rotate-45 border-b border-r border-ink-2" />
+              <span className="token whitespace-nowrap text-t9 leading-none text-ink-2">{q.id} · QUAY</span>
+            </div>
+            {waiting.length > 0 && (
+              <div className="absolute flex -translate-y-[190%] items-center gap-[3px]" style={{ ...at(q.cell), transform: 'translate(-50%, -190%)' }}>
+                {waiting.slice(0, 4).map((c) => (
+                  <span
+                    key={c.id}
+                    className="whitespace-nowrap border px-[3px] py-[2px] font-mono text-t8 leading-none"
+                    style={{
+                      borderColor: `color-mix(in srgb, ${BAND_COLOR[bandOf(c)]} 60%, transparent)`,
+                      background: `color-mix(in srgb, ${BAND_COLOR[bandOf(c)]} 14%, var(--color-void))`,
+                      color: 'var(--color-ink-2)',
+                      borderRadius: 2,
+                    }}
+                  >
+                    {shortId(c.id)}
+                  </span>
+                ))}
+                {waiting.length > 4 && <span className="font-mono text-t8 text-ink-3">+{waiting.length - 4}</span>}
+              </div>
+            )}
+          </div>
+        )
+      })}
 
       {layout.pads.map((pad) => {
         const c = containers[stacks[pad.id]?.[0] ?? '']
@@ -103,13 +123,13 @@ export function Terminals({
             }}
             title={c ? `Transfer pad ${pad.id}: ${c.id} set down temporarily` : `Transfer pad ${pad.id}: free`}
           >
-            <span className="token text-[8px] leading-none text-ink-3">{pad.id}</span>
+            <span className="token text-t8 leading-none text-ink-3">{pad.id}</span>
             {c ? (
-              <span className="font-mono text-[8px] leading-none" style={{ color: 'var(--color-high)' }}>
+              <span className="font-mono text-t8 leading-none" style={{ color: 'var(--color-high)' }}>
                 {shortId(c.id)}
               </span>
             ) : (
-              <span className="text-[8px] leading-none text-ink-3">pad</span>
+              <span className="text-t8 leading-none text-ink-3">pad</span>
             )}
           </div>
         )

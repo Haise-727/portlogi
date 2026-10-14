@@ -13,6 +13,7 @@ import { useYard } from './store/app'
 
 /** Recharts is only ever on screen inside the comparison dialog, so it is not in the first load. */
 const CompareDialog = lazy(() => import('./components/chrome/CompareDialog'))
+const ImpactDialog = lazy(() => import('./components/chrome/ImpactDialog'))
 
 /**
  * The yard owns the screen. Everything else is either a thin bar, a three-line
@@ -25,13 +26,33 @@ export default function App() {
   useShortcuts()
   useScannerFeed()
   const compareOpen = useYard((s) => s.compareOpen)
+  const impactOpen = useYard((s) => s.impactOpen)
   const select = useYard((s) => s.select)
   const reduce = useYard((s) => s.reduceMotion)
+  const theme = useYard((s) => s.theme)
+  const textSize = useYard((s) => s.textSize)
   const stage = useRef<HTMLElement>(null)
 
   useEffect(() => {
     document.documentElement.dataset.reduceMotion = String(reduce)
   }, [reduce])
+
+  useEffect(() => {
+    const root = document.documentElement
+    const mq = window.matchMedia('(prefers-color-scheme: light)')
+    const apply = () => {
+      const light = theme === 'light' || (theme === 'system' && mq.matches)
+      root.dataset.theme = light ? 'light' : 'dark'
+      document.querySelector('meta[name="theme-color"]')?.setAttribute('content', light ? '#f2f4f6' : '#080b0d')
+    }
+    apply()
+    mq.addEventListener('change', apply)
+    return () => mq.removeEventListener('change', apply)
+  }, [theme])
+
+  useEffect(() => {
+    document.documentElement.dataset.text = textSize
+  }, [textSize])
 
   // Say once, on a first visit, where everything configurable lives.
   useEffect(() => {
@@ -72,6 +93,11 @@ export default function App() {
         {compareOpen && (
           <Suspense fallback={null}>
             <CompareDialog />
+          </Suspense>
+        )}
+        {impactOpen && (
+          <Suspense fallback={null}>
+            <ImpactDialog />
           </Suspense>
         )}
       </TipProvider>

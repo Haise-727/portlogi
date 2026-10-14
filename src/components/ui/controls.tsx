@@ -13,7 +13,7 @@ export function Switch({
   label: string
 }) {
   return (
-    <label className="flex cursor-pointer items-center justify-between gap-3 py-[3px] text-[11px] text-ink-2">
+    <label className="flex cursor-pointer items-center justify-between gap-3 py-[3px] text-t11 text-ink-2">
       {label}
       <Sw.Root
         checked={checked}
@@ -55,8 +55,8 @@ export function Slider({
   return (
     <div className={cn('py-[5px]', disabled && 'opacity-40')}>
       <div className="flex items-baseline justify-between">
-        <span className="text-[11px] text-ink-2">{label}</span>
-        <span className="font-mono text-[10px] tabular-nums text-ink">{format(shown)}</span>
+        <span className="text-t11 text-ink-2">{label}</span>
+        <span className="font-mono text-t10 tabular-nums text-ink">{format(shown)}</span>
       </div>
       <Sl.Root
         value={[shown]}
@@ -106,7 +106,7 @@ export function Select({
     <S.Root value={value} onValueChange={onValueChange} disabled={disabled}>
       <S.Trigger
         className={cn(
-          'inline-flex h-[26px] items-center justify-between gap-2 border border-line bg-raise px-2 text-[11px] text-ink-2 outline-none transition-colors hover:border-line-hi data-[placeholder]:text-ink-3 focus-visible:border-signal disabled:opacity-40',
+          'inline-flex h-[26px] items-center justify-between gap-2 border border-line bg-raise px-2 text-t11 text-ink-2 outline-none transition-colors hover:border-line-hi data-[placeholder]:text-ink-3 focus-visible:border-signal disabled:opacity-40',
           className,
         )}
         style={{ borderRadius: 2 }}
@@ -128,7 +128,7 @@ export function Select({
               <S.Item
                 key={o.value}
                 value={o.value}
-                className="relative flex h-[24px] cursor-pointer select-none items-center gap-2 px-2 pr-6 text-[11px] text-ink-2 outline-none data-[highlighted]:bg-raise data-[highlighted]:text-ink"
+                className="relative flex h-[24px] cursor-pointer select-none items-center gap-2 px-2 pr-6 text-t11 text-ink-2 outline-none data-[highlighted]:bg-raise data-[highlighted]:text-ink"
               >
                 <S.ItemText>{o.label}</S.ItemText>
                 <S.ItemIndicator className="absolute right-2">
@@ -140,5 +140,38 @@ export function Select({
         </S.Content>
       </S.Portal>
     </S.Root>
+  )
+}
+
+/** A small row of mutually exclusive choices. */
+export function Segmented<T extends string>({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string
+  value: T
+  options: { value: T; label: ReactNode }[]
+  onChange: (v: T) => void
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 py-[3px]">
+      <span className="text-t10 text-ink-2">{label}</span>
+      <div role="radiogroup" aria-label={label} className="flex border border-line" style={{ borderRadius: 2 }}>
+        {options.map((o) => (
+          <button
+            key={o.value}
+            type="button"
+            role="radio"
+            aria-checked={value === o.value}
+            onClick={() => onChange(o.value)}
+            className={cn('px-[8px] py-[3px] text-t9 transition-colors', value === o.value ? 'bg-raise text-signal' : 'text-ink-3 hover:text-ink-2')}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+    </div>
   )
 }

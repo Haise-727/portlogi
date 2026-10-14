@@ -101,22 +101,38 @@ a heavier box cannot sit on a lighter one, reefers need a plug, hazmat cannot to
 
 ## Hardware bridge
 
-The rig only has to report a card's UID. An ESP32 sends:
+The rig only has to report a card's UID. The ESP32 signs in as a device account and writes each read to a
+Firebase Realtime Database (free Spark plan); the page, signed in, listens and admits that card's container.
+A card always maps to the same container (the UID seeds the generator), and scanning a card that is already in
+the yard is reported rather than duplicated. Setup, the exact calls, rules and an Arduino outline are in
+[docs/hardware-firebase.md](docs/hardware-firebase.md); the rules are in `firebase/database.rules.json`.
 
+The Firebase SDK loads only when **Settings -> Run -> Hardware scanner** is switched on, so a standalone demo
+makes no network calls. The older local bridge in `server/` (`npm run server`) still runs the experiments
+endpoint, and can stand in for the cloud feed on a venue network with no internet.
+
+## Deploying to AWS
+
+The website is served by one Lambda Function URL (HTTPS with an AWS-managed certificate), in the same
+account and CDK bootstrap as quizlike. The stack is called `quizlike-portlogi` because the bootstrap's
+deploy role may only create IAM roles named `quizlike-*`; the same cheap-services-only limits apply.
+
+```bash
+npm run deploy:aws                 # build, test the handler, synth, free-tier check, then deploy
+node infra/scripts/check-live.mjs https://<your-url>   # 31 outside-in security checks -> reports/security/live-check.md
 ```
-POST http://<laptop-ip>:8787/api/scan
-x-device-key: portlogi-dev            (set DEVICE_KEY in the environment to change it)
-content-type: application/json
 
-{ "uid": "04:A3:2F:91", "reader": "gate-1" }
-```
+Needs `AWS_PROFILE=quizlike` (region ap-south-1). Look at `cd infra && npx cdk diff quizlike-portlogi` first.
+What it protects against, and what it does not:
 
-The backend validates it (8–20 hex characters, separators allowed), then pushes it to every open
-browser over `GET /api/events` (Server-Sent Events). With **Settings → Run → Hardware scanner**
-on, the page admits that card's container. A card always maps to the same container (the UID seeds
-the generator), and scanning a card that is already in the yard is reported rather than duplicated.
-
-Other endpoints: `GET /api/health`, `GET /api/scans`, `POST /api/experiments {seeds, arrivals}`.
+- Serves only files baked into the package, answers only GET and HEAD, and checks every path so it can never
+  leave the site folder. 12 tests cover traversal, null bytes, methods, headers and compression.
+- Strict Content-Security-Policy (no inline script or eval, no framing, no plugins), HSTS, nosniff, COOP/CORP.
+  The one loose spot is `style-src 'unsafe-inline'`, needed by React and the animation library.
+- No WAF and no rate limit (both are billed), and no per-function concurrency cap: the account has only 10
+  concurrent executions in total, shared by every function, so a flood could starve the quizlike API too.
+- Storage, accounts and the hardware feed live on Firebase (free Spark plan), not on AWS. Its rules deny everything
+  except device writes and signed-in reads, and sign-up is off.
 
 ## Evidence
 

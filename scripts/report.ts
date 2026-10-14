@@ -79,6 +79,7 @@ const A = QUICK ? 10 : 40
 const zero = (k: keyof Weights): Weights => ({ ...DEFAULT_WEIGHTS, [k]: 0 })
 const configs: { name: string; weights: Weights }[] = [
   { name: 'All terms', weights: DEFAULT_WEIGHTS },
+  { name: 'ETD rule only (rehandle term alone)', weights: { rehandle: 40, travel: 0, cluster: 0, spread: 0, access: 0 } },
   { name: 'No rehandle risk', weights: zero('rehandle') },
   { name: 'No travel', weights: zero('travel') },
   { name: 'No cluster', weights: zero('cluster') },

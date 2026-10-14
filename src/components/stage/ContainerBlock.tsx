@@ -75,12 +75,12 @@ export function ContainerBlock({ container, band, style, tier, selected, checked
       )}
       {/* destination in the top strip (covered by the box above); identity strip at the bottom always shows */}
       <span className="flex items-start justify-between gap-1 pl-[7px] pr-[4px] pt-[3px]">
-        <span className="truncate text-[8px] leading-none text-ink-3">{container.group ?? container.destination}</span>
+        <span className="truncate text-t8 leading-none text-ink-3">{container.group ?? container.destination}</span>
         <Icon size={9} strokeWidth={2} style={{ color: colour }} />
       </span>
       <span className="flex items-end justify-between pb-[3px] pl-[7px] pr-[4px]">
-        <span className="font-mono text-[9px] leading-none tracking-tight text-ink">{shortId(container.id)}</span>
-        <span className="font-mono text-[8px] leading-none text-ink-3">{container.weight}t</span>
+        <span className="font-mono text-t9 leading-none tracking-tight text-ink">{shortId(container.id)}</span>
+        <span className="font-mono text-t8 leading-none text-ink-3">{container.weight}t</span>
       </span>
     </motion.button>
   )

@@ -42,7 +42,7 @@ import {
   MINUTES_PER_CELL,
   type Reservation,
 } from './traffic'
-import type { Cell, Container, ContainerType, EventSeverity, Tier, YardEvent } from './types'
+import type { Cell, Container, ContainerType, EventSeverity, Flow, Tier, YardEvent } from './types'
 
 /* ------------------------------------------------------------------ *
  * Types
@@ -74,7 +74,7 @@ export type Leg =
   | { kind: 'hoist'; containerId: string; slot: string; slow?: boolean }
   | { kind: 'lower'; containerId: string; slot: string; slow?: boolean }
   | { kind: 'collect'; containerId: string; gate: string }
-  | { kind: 'depart'; containerId: string; quay: string }
+  | { kind: 'depart'; containerId: string; exit: string }
 
 export type RetrievalPlan = {
   containerId: string
@@ -195,10 +195,12 @@ export type EngineState = {
   naiveStacks: Record<string, string[]>
 }
 
-export type ScenarioName = 'surge' | 'reefer-storm' | 'breakdown' | 'gate-burst' | 'cutoff-rush'
+export type ScenarioName = 'surge' | 'reefer-storm' | 'breakdown' | 'gate-burst' | 'cutoff-rush' | 'discharge'
 
 export type Command =
-  | { t: 'admit'; gate?: string; tagUid?: string; type?: ContainerType; group?: string }
+  | { t: 'admit'; gate?: string; tagUid?: string; type?: ContainerType; group?: string; flow?: Flow }
+  | { t: 'book'; id: string; fleetId: string; fleetName: string; start: number; end: number }
+  | { t: 'cancelBooking'; id: string }
   | { t: 'retrieve'; id: string }
   | { t: 'confirm' }
   | { t: 'cancel' }
@@ -284,6 +286,14 @@ const ARRIVAL_INTERVAL = 3.2
 /** A stored box this close to its ETD is called forward automatically. */
 const CALL_FORWARD = 22
 const RETRY = 4
+/** What the planner assumes about an import box nobody has booked yet: it leaves about this long after it arrives. */
+const IMPORT_GUESS_MINUTES = 180
+/** An import nobody books is collected by a walk-in truck after this long, so it cannot sit for ever. */
+const IMPORT_MAX_DWELL = 360
+/** A booking must start at least this far ahead, so the yard has time to bring the box out. */
+export const BOOKING_MIN_LEAD = 15
+/** The yard starts bringing a booked box to the exit this long before the truck is due. */
+const CALL_LEAD = 20
 
 /* ------------------------------------------------------------------ *
  * Engine
@@ -334,6 +344,7 @@ export class Engine {
     for (const p of L.pads) stacks[p.id] = []
     const gateQueues: Record<string, string[]> = {}
     for (const g of L.gates) gateQueues[g.id] = []
+    for (const q of L.quays) gateQueues[q.id] = []
     return {
       tick: 0,
       now: 0,
@@ -534,8 +545,9 @@ export class Engine {
     return this.layout.capacity - this.used() - this.queued()
   }
 
-  private gate(id: string): Terminal {
-    return this.layout.gates.find((g) => g.id === id) ?? this.layout.gates[0]
+  /** A gate or a quay by id. A box's arrival terminal is a gate for exports and a quay for imports. */
+  private terminalAt(id: string): Terminal {
+    return this.layout.gates.find((g) => g.id === id) ?? this.layout.quays.find((q) => q.id === id) ?? this.layout.gates[0]
   }
 
   private dwellOf(leg: Leg | undefined): number {
@@ -600,9 +612,9 @@ export class Engine {
       case 'lower':
         return slotToCell(L, leg.slot)
       case 'collect':
-        return this.gate(leg.gate).cell
+        return this.terminalAt(leg.gate).cell
       case 'depart':
-        return L.quays.find((q) => q.id === leg.quay)?.cell ?? L.quays[0].cell
+        return this.terminalAt(leg.exit).cell
       default:
         return null
     }
@@ -625,6 +637,10 @@ export class Engine {
         return this.cmdAdmit(cmd)
       case 'retrieve':
         return this.cmdRetrieve(cmd.id)
+      case 'book':
+        return this.cmdBook(cmd.id, cmd.fleetId, cmd.fleetName, cmd.start, cmd.end)
+      case 'cancelBooking':
+        return this.cmdCancelBooking(cmd.id)
       case 'confirm':
         return this.cmdConfirm()
       case 'cancel':
@@ -659,7 +675,7 @@ export class Engine {
     }
   }
 
-  private cmdAdmit(o: { gate?: string; tagUid?: string; type?: ContainerType; group?: string }): void {
+  private cmdAdmit(o: { gate?: string; tagUid?: string; type?: ContainerType; group?: string; flow?: Flow }): void {
     if (this.freeCapacity() <= 0) {
       this.log('critical', 'Gate held: the yard is full.')
       return
@@ -668,10 +684,13 @@ export class Engine {
   }
 
   /** One box through a gate. Returns false if it could not be admitted. */
-  private admit(o: { gate?: string; tagUid?: string; type?: ContainerType; group?: string } = {}): boolean {
+  private admit(o: { gate?: string; tagUid?: string; type?: ContainerType; group?: string; flow?: Flow } = {}): boolean {
     const s = this.s
     const L = this.layout
-    const gate = o.gate && L.gates.some((g) => g.id === o.gate) ? o.gate : L.gates[s.arrivals % L.gates.length].id
+    const isImport = o.flow === 'import'
+    // exports arrive at a gate; imports are lifted off a ship onto a quay
+    const arrivals = isImport ? L.quays : L.gates
+    const gate = o.gate && arrivals.some((g) => g.id === o.gate) ? o.gate : arrivals[s.arrivals % arrivals.length].id
     s.arrivals++
 
     const hasPlugs = L.activeSlots.some((x) => isPowered(L, x))
@@ -705,13 +724,17 @@ export class Engine {
       if (c.type === 'reefer' && !hasPlugs) c = { ...c, type: 'standard' }
     }
     s.gen = { ...s.gen }
+    if (isImport) {
+      // Nobody has said when this box will be collected. The planner assumes a typical dwell until a booking says otherwise.
+      c = { ...c, flow: 'import', declared: false, etd: Math.round(s.now + IMPORT_GUESS_MINUTES) }
+    }
 
     this.w('containers')[c.id] = c
     const q = this.w('gateQueues')
     q[gate] = [...(q[gate] ?? []), c.id]
     this.w('jobs').push({ kind: 'place', containerId: c.id, priority: this.priorityOf(c).score, createdAt: s.now })
 
-    if (this.strategy === 'optimised') {
+    if (this.strategy === 'optimised' && !isImport) {
       const naiveSnap = emptySnapshot(L)
       for (const slot of Object.keys(naiveSnap)) {
         naiveSnap[slot] = (s.naiveStacks[slot] ?? []).map((id) => s.containers[id]).filter(Boolean)
@@ -723,10 +746,16 @@ export class Engine {
       }
     }
 
-    this.log('action', `${gate}: ${shortId(c.id)} arrived: ${c.type}, ${c.weight}t for ${c.destination}.`, {
-      ref: c.id,
-      detail: `RFID ${c.tagUid} · full marking ${c.id} · booked on ${c.vessel}`,
-    })
+    this.log(
+      'action',
+      isImport
+        ? `${gate}: ${shortId(c.id)} discharged from ${c.vessel}: ${c.type}, ${c.weight}t, waiting to be booked.`
+        : `${gate}: ${shortId(c.id)} arrived: ${c.type}, ${c.weight}t for ${c.destination}.`,
+      {
+        ref: c.id,
+        detail: `RFID ${c.tagUid} · full marking ${c.id} · ${isImport ? `import, departure estimated at +${IMPORT_GUESS_MINUTES} min until booked` : `booked on ${c.vessel}`}`,
+      },
+    )
     return true
   }
 
@@ -833,6 +862,37 @@ export class Engine {
     this.log('action', `${shortId(c.id)} queued to move ${c.slot} → ${slot}.`, { ref: id })
   }
 
+  /** A business books a truck to collect an import box. The booked time becomes the box's real departure time. */
+  private cmdBook(id: string, fleetId: string, fleetName: string, start: number, end: number): void {
+    const s = this.s
+    const c = s.containers[id]
+    if (!c || c.flow !== 'import' || c.status === 'departed') return
+    if (start < s.now + BOOKING_MIN_LEAD) {
+      this.log('warn', `${shortId(c.id)} cannot be booked for ${Math.max(0, Math.round(start - s.now))} min from now: the yard needs at least ${BOOKING_MIN_LEAD}.`, { ref: id })
+      return
+    }
+    const rebooked = !!c.booking
+    this.patch(id, {
+      etd: Math.round(start),
+      declared: true,
+      booking: { fleetId, fleetName, start, end: Math.max(end, start + 10), madeAt: s.now, status: 'confirmed' },
+    })
+    this.log('action', `${shortId(c.id)} ${rebooked ? 'rebooked' : 'booked'}: ${fleetName} collects it in about ${Math.round(start - s.now)} min.`, {
+      ref: id,
+      detail: `Departure time is now firm (it was an estimate). The yard will bring it to the gate ${CALL_LEAD} min before the truck is due.`,
+    })
+  }
+
+  private cmdCancelBooking(id: string): void {
+    const s = this.s
+    const c = s.containers[id]
+    if (!c?.booking || c.status === 'departed') return
+    const { booking, ...rest } = c
+    void booking
+    this.w('containers')[id] = { ...rest, declared: false, etd: Math.round(s.now + IMPORT_GUESS_MINUTES) }
+    this.log('action', `Booking for ${shortId(c.id)} cancelled; its departure is an estimate again.`, { ref: id })
+  }
+
   private cmdSetType(id: string, type: ContainerType): void {
     const s = this.s
     const L = this.layout
@@ -899,6 +959,12 @@ export class Engine {
         let n = 0
         for (let i = 0; i < 6 && this.freeCapacity() > 0; i++) if (this.admit()) n++
         this.log('warn', `Scenario: gate burst. ${n} boxes arrived at once.`)
+        return
+      }
+      case 'discharge': {
+        let n = 0
+        for (let i = 0; i < 6 && this.freeCapacity() > 0; i++) if (this.admit({ flow: 'import' })) n++
+        this.log('warn', `Scenario: vessel discharge. ${n} import boxes were lifted onto the quay; none has a pickup booked yet.`)
         return
       }
       case 'reefer-storm':
@@ -983,10 +1049,13 @@ export class Engine {
 
     const queues: Record<string, string[]> = {}
     for (const g of next.gates) queues[g.id] = s.gateQueues[g.id] ?? []
-    for (const [gid, ids] of Object.entries(s.gateQueues)) {
-      if (queues[gid]) continue
-      queues[next.gates[0].id] = [...queues[next.gates[0].id], ...ids]
-      for (const id of ids) this.patch(id, { gate: next.gates[0].id })
+    for (const q of next.quays) queues[q.id] = s.gateQueues[q.id] ?? []
+    // boxes waiting at a terminal that no longer exists go to the first terminal of the same kind
+    for (const [tid, ids] of Object.entries(s.gateQueues)) {
+      if (queues[tid]) continue
+      const fallback = tid.startsWith('Q') ? next.quays[0].id : next.gates[0].id
+      queues[fallback] = [...queues[fallback], ...ids]
+      for (const id of ids) this.patch(id, { gate: fallback })
     }
     s.gateQueues = queues
     this.touched.add('gateQueues')
@@ -1137,6 +1206,7 @@ export class Engine {
     for (const id of Object.keys(s.containers)) {
       const c = s.containers[id]
       if (c.status !== 'stored' || busy.has(id) || queuedIds.has(id)) continue
+      if (c.flow === 'import') continue // an import leaves when its truck is booked (see serviceBookings)
       if (c.etd - s.now > CALL_FORWARD) continue
       this.enqueueRetrieve(c)
       queuedIds.add(id)
@@ -1170,12 +1240,46 @@ export class Engine {
     if (occ <= 0.7) return
     if (s.jobs.filter((j) => j.kind === 'retrieve').length >= 2) return
     const next = Object.values(s.containers)
-      .filter((c) => c.status === 'stored' && !busy.has(c.id) && !queuedIds.has(c.id))
+      .filter((c) => c.status === 'stored' && c.flow !== 'import' && !busy.has(c.id) && !queuedIds.has(c.id))
       .map((c) => ({ c, p: this.priorityOf(c) }))
       .sort((a, b) => b.p.score - a.p.score || a.c.etd - b.c.etd)[0]
     if (!next) return
     this.enqueueRetrieve(next.c)
     this.log('warn', `Yard ${Math.round(occ * 100)}% full: bringing ${shortId(next.c.id)} forward to free space.`, { ref: next.c.id })
+  }
+
+  /**
+   * Import boxes leave only when a truck comes for them. A booked box is brought to the gate shortly
+   * before its window; one nobody books is eventually collected by a walk-in truck. Runs whether or not
+   * auto mode is on, because bookings are an operator action, not a simulation setting.
+   */
+  private serviceBookings(): void {
+    const s = this.s
+    const busy = this.assignedIds()
+    const queued = new Set(s.jobs.map((j) => j.containerId))
+    for (const c of Object.values(s.containers)) {
+      if (c.flow !== 'import' || c.status === 'departed') continue
+      const b = c.booking
+      if (b) {
+        if (b.status === 'confirmed' && s.now >= b.start) {
+          this.patch(c.id, { booking: { ...b, status: 'arrived' } })
+          this.log('info', `${b.fleetName} has arrived for ${shortId(c.id)} and is waiting.`, { ref: c.id, verbose: true })
+        }
+        if (c.status === 'stored' && !busy.has(c.id) && !queued.has(c.id) && s.now >= b.start - CALL_LEAD) {
+          this.enqueueRetrieve(c)
+          queued.add(c.id)
+          this.log('warn', `${shortId(c.id)} is being brought to the gate for ${b.fleetName}, due in ${Math.max(0, Math.round(b.start - s.now))} min.`, { ref: c.id })
+        }
+        if (b.status !== 'late' && b.status !== 'released' && s.now > b.end) {
+          this.patch(c.id, { booking: { ...b, status: 'late' } })
+          this.log('critical', `${shortId(c.id)} missed its pickup window: ${b.fleetName} is waiting.`, { ref: c.id })
+        }
+      } else if (c.status === 'stored' && s.now - c.arrivedAt >= IMPORT_MAX_DWELL && !busy.has(c.id) && !queued.has(c.id)) {
+        this.enqueueRetrieve(c)
+        queued.add(c.id)
+        this.log('warn', `${shortId(c.id)} was never booked: after ${Math.round(s.now - c.arrivedAt)} min it goes to a walk-in truck.`, { ref: c.id })
+      }
+    }
   }
 
   private isFree(a: Agv): boolean {
@@ -1190,7 +1294,7 @@ export class Engine {
   private jobOrigin(j: Job): Cell | null {
     const c = this.s.containers[j.containerId]
     if (!c) return null
-    if (j.kind === 'place') return this.gate(c.gate).cell
+    if (j.kind === 'place') return this.terminalAt(c.gate).cell
     return c.slot ? slotToCell(this.layout, c.slot) : null
   }
 
@@ -1244,7 +1348,7 @@ export class Engine {
     const s = this.s
     const c = s.containers[job.containerId]
     if (!c || c.status !== 'inbound') return 'drop'
-    const gate = this.gate(c.gate)
+    const gate = this.terminalAt(c.gate)
     const chosen = this.chooseSlot(c, gate.cell, agv.id)
 
     if (!chosen) {
@@ -1370,8 +1474,8 @@ export class Engine {
     return { legs, restack, parked }
   }
 
-  private nearestQuay(from: Cell): Terminal {
-    return [...this.layout.quays].sort(
+  private nearestTerminal(list: Terminal[], from: Cell): Terminal {
+    return [...list].sort(
       (a, b) => Math.abs(a.cell.x - from.x) + Math.abs(a.cell.y - from.y) - (Math.abs(b.cell.x - from.x) + Math.abs(b.cell.y - from.y)),
     )[0]
   }
@@ -1384,7 +1488,8 @@ export class Engine {
     if (dig === 'blocked') return null
 
     const L = this.layout
-    const quay = this.nearestQuay(slotToCell(L, c.slot))
+    // exports go to a quay for the ship; imports go to a gate for the truck
+    const exit = this.nearestTerminal(c.flow === 'import' ? L.gates : L.quays, slotToCell(L, c.slot))
     return {
       ...agv,
       priority: job.priority,
@@ -1393,8 +1498,8 @@ export class Engine {
         ...dig.legs,
         { kind: 'move', goal: slotToCell(L, c.slot), note: `to ${c.slot}` },
         { kind: 'hoist', containerId: c.id, slot: c.slot },
-        { kind: 'move', goal: quay.cell, note: `to ${quay.id}` },
-        { kind: 'depart', containerId: c.id, quay: quay.id },
+        { kind: 'move', goal: exit.cell, note: `to ${exit.id}` },
+        { kind: 'depart', containerId: c.id, exit: exit.id },
         ...dig.restack,
       ],
     }
@@ -1759,7 +1864,12 @@ export class Engine {
       const ns = this.w('naiveStacks')
       for (const k of Object.keys(ns)) if (ns[k].includes(c.id)) ns[k] = ns[k].filter((id) => id !== c.id)
     }
-    this.log('good', `${shortId(c.id)} loaded onto ${c.vessel} at ${leg.quay} for ${c.destination}.`, { ref: c.id })
+    if (c.flow === 'import') {
+      if (c.booking) this.patch(c.id, { booking: { ...c.booking, status: 'released' } })
+      this.log('good', `${shortId(c.id)} released at ${leg.exit} to ${c.booking?.fleetName ?? 'a walk-in truck'}.`, { ref: c.id })
+    } else {
+      this.log('good', `${shortId(c.id)} loaded onto ${c.vessel} at ${leg.exit} for ${c.destination}.`, { ref: c.id })
+    }
     if (s.rehandleChain.length) s.rehandleChain = []
     return { ...agv, mode: 'idle', liftT: 0, carrying: null, legs: rest }
   }
@@ -1917,6 +2027,7 @@ export class Engine {
       this.autoArrivals()
       if (s.tick % 10 === 0) this.callForward()
     }
+    if (s.tick % 10 === 5) this.serviceBookings()
     this.dispatch()
     s.agvs = s.agvs.map((a) => this.stepAgv(a))
     this.resolveDeadlocks()

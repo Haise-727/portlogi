@@ -29,12 +29,12 @@ export function DigOutPrompt() {
         >
           <div className="flex items-center gap-[6px] px-2 py-[6px]">
             <Layers size={12} style={{ color: 'var(--color-critical)' }} />
-            <h2 className="text-[11px] font-medium" style={{ color: 'var(--color-critical)' }}>
+            <h2 className="text-t11 font-medium" style={{ color: 'var(--color-critical)' }}>
               Dig-out required
             </h2>
-            <span className="ml-auto font-mono text-[10px] tabular-nums text-ink-2">+{plan.extraMoves} moves</span>
+            <span className="ml-auto font-mono text-t10 tabular-nums text-ink-2">+{plan.extraMoves} moves</span>
           </div>
-          <p className="px-2 pb-2 text-[10px] leading-snug text-ink-2">
+          <p className="px-2 pb-2 text-t10 leading-snug text-ink-2">
             {shortId(target.id)} is at tier {(target.tier ?? 0) + 1} of {plan.slot}, under {plan.blockers.length} box{plan.blockers.length === 1 ? '' : 'es'}.{' '}
             {plan.wasted
               ? 'Everything on top leaves later, so every move is wasted work: the stack the allocator exists to avoid.'

@@ -1,6 +1,6 @@
 # portlogi: experimental results
 
-Generated 2026-10-13T15:45:24.906Z by `npm run report`.
+Generated 2026-10-14T18:36:24.504Z by `npm run report`.
 
 ## 1. Allocator versus first-available placement
 
@@ -22,6 +22,7 @@ One term's weight set to zero at a time, 40 seeds each.
 | Configuration | Rehandles | Cells driven | Time to clear (min) |
 |---|---|---|---|
 | All terms | 2.0 ± 0.4 | 861 ± 14 | 342 ± 9 |
+| ETD rule only (rehandle term alone) | 2.9 ± 0.5 | 910 ± 13 | 355 ± 11 |
 | No rehandle risk | 7.1 ± 0.6 | 872 ± 13 | 346 ± 10 |
 | No travel | 1.9 ± 0.5 | 866 ± 14 | 343 ± 9 |
 | No cluster | 2.2 ± 0.4 | 852 ± 13 | 342 ± 10 |
@@ -36,9 +37,9 @@ One term's weight set to zero at a time, 40 seeds each.
 | Layout (positions) | Vehicles | Rehandles: allocator | Rehandles: first-available | Time to clear (min) | Traffic holds | Wall-clock per run |
 |---|---|---|---|---|---|---|
 | 3×4 (12) | 2 | 0.9 ± 0.4 | 5.3 ± 1.2 | 307 ± 17 | 20 ± 7 | 0.0 s |
-| 4×6 (24) | 4 | 2.8 ± 0.9 | 22.8 ± 2.2 | 386 ± 20 | 71 ± 11 | 0.2 s |
-| 5×8 (40) | 5 | 5.7 ± 1.7 | 36.7 ± 3.4 | 506 ± 15 | 221 ± 41 | 0.6 s |
-| 6×10 (60) | 6 | 7.1 ± 1.6 | 56.7 ± 3.1 | 625 ± 14 | 326 ± 31 | 1.7 s |
+| 4×6 (24) | 4 | 2.8 ± 0.9 | 22.8 ± 2.2 | 386 ± 20 | 71 ± 11 | 0.1 s |
+| 5×8 (40) | 5 | 5.7 ± 1.7 | 36.7 ± 3.4 | 506 ± 15 | 221 ± 41 | 0.5 s |
+| 6×10 (60) | 6 | 7.1 ± 1.6 | 56.7 ± 3.1 | 625 ± 14 | 326 ± 31 | 1.6 s |
 
 ## 4. Fleet size on the default 4×3 yard
 

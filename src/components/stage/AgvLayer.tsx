@@ -125,7 +125,7 @@ function AgvBody({ agv, cargo, band, still }: { agv: Agv; cargo: Container | nul
       )}
 
       <span
-        className="absolute left-1/2 top-[calc(100%+3px)] -translate-x-1/2 whitespace-nowrap font-mono text-[8px] leading-none"
+        className="absolute left-1/2 top-[calc(100%+3px)] -translate-x-1/2 whitespace-nowrap font-mono text-t8 leading-none"
         style={{ color: broken ? 'var(--color-critical)' : held ? 'var(--color-high)' : 'var(--color-ink-3)' }}
       >
         {agv.id.replace('AGV-', 'A')}
@@ -135,7 +135,7 @@ function AgvBody({ agv, cargo, band, still }: { agv: Agv; cargo: Container | nul
 
       {held && agv.holdReason && (
         <span
-          className="absolute bottom-[calc(100%+4px)] left-1/2 -translate-x-1/2 whitespace-nowrap border px-[3px] py-[1px] font-mono text-[8px] leading-none"
+          className="absolute bottom-[calc(100%+4px)] left-1/2 -translate-x-1/2 whitespace-nowrap border px-[3px] py-[1px] font-mono text-t8 leading-none"
           style={{ background: 'var(--color-void)', borderColor: 'var(--color-high)', color: 'var(--color-high)', borderRadius: 2 }}
         >
           HELD · {agv.holdReason}

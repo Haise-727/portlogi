@@ -95,7 +95,7 @@ export function SlotCell(p: Props) {
         />
       )}
 
-      <span className="token absolute left-[7px] top-[4px] text-[9px] leading-none text-ink-3">{slot}</span>
+      <span className="token absolute left-[7px] top-[4px] text-t9 leading-none text-ink-3">{slot}</span>
       {p.powered && !p.disabled && (
         <Zap size={9} strokeWidth={2} className="absolute right-[6px] top-[4px] text-ink-3" aria-label="Powered slot" />
       )}
@@ -134,7 +134,7 @@ export function SlotCell(p: Props) {
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.14 }}
-            className="pointer-events-none absolute left-[26px] top-[3px] z-20 border px-[4px] py-[1px] font-mono text-[9px] leading-none"
+            className="pointer-events-none absolute left-[26px] top-[3px] z-20 border px-[4px] py-[1px] font-mono text-t9 leading-none"
             style={{
               background: 'color-mix(in srgb, var(--color-void) 82%, transparent)',
               borderColor: p.chosen ? 'var(--color-signal)' : 'var(--color-line-hi)',

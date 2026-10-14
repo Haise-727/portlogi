@@ -215,25 +215,25 @@ function SlotCard({
       }}
     >
       <div className="mb-1 flex items-baseline justify-between">
-        <span className="token text-[10px] text-ink">{slot}</span>
-        <span className="font-mono text-[9px] text-ink-3">
+        <span className="token text-t10 text-ink">{slot}</span>
+        <span className="font-mono text-t9 text-ink-3">
           {layout.disabled.has(slot) ? 'OUT OF SERVICE' : `${isPowered(layout, slot) ? 'POWERED' : 'DRY'} · ${stack.length}/${layout.tiers}`}
         </span>
       </div>
       {rejection ? (
-        <p className="text-[10px] leading-snug" style={{ color: 'var(--color-critical)' }}>
+        <p className="text-t10 leading-snug" style={{ color: 'var(--color-critical)' }}>
           {rejection}
         </p>
       ) : stack.length === 0 ? (
-        <p className="text-[10px] leading-snug text-ink-3">Empty. Ground tier available.</p>
+        <p className="text-t10 leading-snug text-ink-3">Empty. Ground tier available.</p>
       ) : (
         <ul className="flex flex-col-reverse gap-1">
           {stack.map((c, tier) => (
             <li key={c.id} className="flex items-center gap-[5px]">
               <span className="h-[10px] w-[2px] shrink-0" style={{ background: BAND_COLOR[bandOf(c)] }} />
-              <span className="font-mono text-[9px] text-ink-2">T{tier + 1}</span>
-              <span className="truncate font-mono text-[9px] text-ink">{shortId(c.id)}</span>
-              <span className="ml-auto font-mono text-[9px] text-ink-3">{Math.max(0, Math.round(c.etd - now))}m</span>
+              <span className="font-mono text-t9 text-ink-2">T{tier + 1}</span>
+              <span className="truncate font-mono text-t9 text-ink">{shortId(c.id)}</span>
+              <span className="ml-auto font-mono text-t9 text-ink-3">{Math.max(0, Math.round(c.etd - now))}m</span>
             </li>
           ))}
         </ul>

@@ -15,7 +15,7 @@ export function TabsTrigger({ className, ...p }: ComponentProps<typeof T.Trigger
   return (
     <T.Trigger
       className={cn(
-        'flex-1 px-2 py-[8px] text-[11px] text-ink-3 outline-none transition-colors hover:text-ink-2 data-[state=active]:text-ink data-[state=active]:shadow-[inset_0_-1px_0_var(--color-signal)] focus-visible:text-ink',
+        'flex-1 px-2 py-[8px] text-t11 text-ink-3 outline-none transition-colors hover:text-ink-2 data-[state=active]:text-ink data-[state=active]:shadow-[inset_0_-1px_0_var(--color-signal)] focus-visible:text-ink',
         className,
       )}
       {...p}
@@ -58,7 +58,7 @@ export function Tip({ label, children }: { label: string; children: ReactNode })
       <Tt.Portal>
         <Tt.Content
           sideOffset={5}
-          className="z-[80] border border-line-hi bg-void px-[6px] py-[3px] text-[10px] text-ink-2 data-[state=delayed-open]:animate-[pop-in_.12s_ease-out] data-[state=instant-open]:animate-[pop-in_.12s_ease-out] data-[state=closed]:animate-[pop-out_.08s_ease-in]"
+          className="z-[80] border border-line-hi bg-void px-[6px] py-[3px] text-t10 text-ink-2 data-[state=delayed-open]:animate-[pop-in_.12s_ease-out] data-[state=instant-open]:animate-[pop-in_.12s_ease-out] data-[state=closed]:animate-[pop-out_.08s_ease-in]"
           style={{ borderRadius: 2 }}
         >
           {label}
@@ -102,8 +102,8 @@ export function Dialog({
           style={{ borderRadius: 2 }}
         >
           <header className="flex items-baseline gap-3 border-b border-line px-3 py-2">
-            <D.Title className="text-[12px] font-medium text-ink">{title}</D.Title>
-            {description && <D.Description className="text-[10px] text-ink-3">{description}</D.Description>}
+            <D.Title className="text-t12 font-medium text-ink">{title}</D.Title>
+            {description && <D.Description className="text-t10 text-ink-3">{description}</D.Description>}
             <D.Close className="ml-auto self-center text-ink-3 transition-colors hover:text-ink" aria-label="Close">
               <X size={14} />
             </D.Close>

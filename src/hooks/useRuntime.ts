@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
-import { useYard } from '../store/app'
+import { startFeed, type FeedApi } from '../lib/scanFeed'
+import { setFeedApi, useYard } from '../store/app'
 
 /** The simulation clock: one requestAnimationFrame loop, paused with the tab. */
 export function useClock(): void {
@@ -35,6 +36,9 @@ export function useShortcuts(): void {
           break
         case 'c':
           s.setCompareOpen(true)
+          break
+        case 'i':
+          s.setImpactOpen(true)
           break
         case 'm':
           if (s.sidebar) s.closeSidebar()
@@ -73,29 +77,32 @@ export function useShortcuts(): void {
 }
 
 /**
- * Hardware feed. When switched on, listen to the backend's Server-Sent Events
- * stream; each RFID read that the ESP32 posts arrives as a `scan` event and
- * admits that card's container at the gate. Off by default, so a standalone
- * demo makes no network calls at all.
+ * Hardware feed. When switched on, load the Firebase SDK (only then) and listen for RFID reads that the
+ * ESP32 writes to the database; each one admits that card's container at the gate. Off by default, so a
+ * standalone demo makes no network calls at all.
  */
 export function useScannerFeed(): void {
   const on = useYard((s) => s.scannerFeed)
   useEffect(() => {
     if (!on) return
-    const es = new EventSource('/api/events')
-    es.onopen = () => useYard.getState().setScannerOnline(true)
-    es.onerror = () => useYard.getState().setScannerOnline(false)
-    es.addEventListener('scan', (e) => {
-      try {
-        const { uid } = JSON.parse((e as MessageEvent<string>).data) as { uid: string }
-        useYard.getState().cardScanned(uid)
-      } catch {
-        // a malformed frame is not worth a crash
-      }
+    let cancelled = false
+    let api: FeedApi | null = null
+    const store = useYard.getState()
+    startFeed({
+      onScan: (uid) => useYard.getState().cardScanned(uid),
+      onStatus: (status, detail) => useYard.getState().setScannerStatus(status, detail),
+      onUser: (email) => useYard.getState().setScannerUser(email),
     })
+      .then((feed) => {
+        if (cancelled) return feed.stop()
+        api = feed
+        setFeedApi(feed)
+      })
+      .catch((e: Error) => store.setScannerStatus('error', e.message))
     return () => {
-      es.close()
-      useYard.getState().setScannerOnline(false)
+      cancelled = true
+      api?.stop()
+      setFeedApi(null)
     }
   }, [on])
 }

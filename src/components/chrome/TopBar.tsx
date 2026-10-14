@@ -1,4 +1,4 @@
-import { Activity, Menu, Pause, Play, ScanLine } from 'lucide-react'
+import { Activity, Menu, Moon, Pause, Play, ScanLine, Sun } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { formatClock } from '../../lib/time'
 import { formatMinutes } from '../../engine/priority'
@@ -27,26 +27,31 @@ export function TopBar() {
   const sidebar = useYard((s) => s.sidebar)
   const closeSidebar = useYard((s) => s.closeSidebar)
   const menuSeen = useYard((s) => s.menuSeen)
+  const theme = useYard((s) => s.theme)
+  const setTheme = useYard((s) => s.setTheme)
+
+  const isLight =
+    theme === 'light' || (theme === 'system' && typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: light)').matches)
 
   return (
     <header className="flex h-9 items-center gap-3 border-b border-line bg-panel px-3">
-      <span className="font-mono text-[12px] font-semibold tracking-[0.16em] text-ink">PORTLOGI</span>
+      <span className="font-mono text-t12 font-semibold tracking-[0.16em] text-ink">PORTLOGI</span>
       <span className="hidden h-[11px] w-px bg-line-hi sm:block" />
-      <span className="hidden text-[11px] text-ink-3 md:block">V.O. Chidambaranar Port, Thoothukudi</span>
+      <span className="hidden text-t11 text-ink-3 md:block">V.O. Chidambaranar Port, Thoothukudi</span>
 
       <Metrics />
 
       <span className="ml-auto flex items-center gap-2">
         {replay && (
           <span
-            className="token border px-[5px] py-[2px] text-[9px] leading-none"
+            className="token border px-[5px] py-[2px] text-t9 leading-none"
             style={{ color: 'var(--color-high)', borderColor: 'color-mix(in srgb, var(--color-high) 55%, transparent)', borderRadius: 2 }}
           >
             replay
           </span>
         )}
 
-        <span className="flex items-center gap-[5px] font-mono text-[12px] tabular-nums text-ink">
+        <span className="flex items-center gap-[5px] font-mono text-t12 tabular-nums text-ink">
           {running ? <Activity size={11} className="text-signal" strokeWidth={2} /> : <Pause size={11} className="text-ink-3" strokeWidth={2} />}
           {formatClock(now)}
         </span>
@@ -64,7 +69,7 @@ export function TopBar() {
               type="button"
               onClick={() => setSpeed(s)}
               className={cn(
-                'px-[6px] py-[3px] font-mono text-[10px] transition-colors',
+                'px-[6px] py-[3px] font-mono text-t10 transition-colors',
                 speed === s ? 'bg-raise text-signal' : 'text-ink-3 hover:text-ink-2',
               )}
             >
@@ -82,6 +87,11 @@ export function TopBar() {
         <Tip label="Let the gates feed the yard (A)">
           <Button variant={auto ? 'active' : 'default'} disabled={replay} onClick={() => command({ t: 'auto', on: !auto })}>
             Auto
+          </Button>
+        </Tip>
+        <Tip label={isLight ? 'Switch to dark theme' : 'Switch to light theme'}>
+          <Button size="icon" variant="ghost" onClick={() => setTheme(isLight ? 'dark' : 'light')} aria-label="Toggle theme">
+            {isLight ? <Moon size={13} /> : <Sun size={13} />}
           </Button>
         </Tip>
         <Tip label="Layout, scenarios, boxes and tuning (M)">
@@ -146,8 +156,8 @@ function Metrics() {
 function Chip({ label, value, tint }: { label: string; value: string; tint?: string }) {
   return (
     <span className="flex items-baseline gap-[5px]">
-      <span className="font-mono text-[9px] tracking-[0.08em] text-ink-3">{label}</span>
-      <span className="font-mono text-[11px] tabular-nums" style={{ color: tint ?? 'var(--color-ink)' }}>
+      <span className="font-mono text-t9 tracking-[0.08em] text-ink-3">{label}</span>
+      <span className="font-mono text-t11 tabular-nums" style={{ color: tint ?? 'var(--color-ink)' }}>
         {value}
       </span>
     </span>
@@ -157,10 +167,10 @@ function Chip({ label, value, tint }: { label: string; value: string; tint?: str
 function Stat({ label, value, tint }: { label: string; value: ReactNode; tint?: string }) {
   return (
     <div className="border-b border-r border-line px-2 py-[6px] [&:nth-child(2n)]:border-r-0">
-      <dd className="font-mono text-[14px] leading-none tabular-nums" style={{ color: tint ?? 'var(--color-ink)' }}>
+      <dd className="font-mono text-t14 leading-none tabular-nums" style={{ color: tint ?? 'var(--color-ink)' }}>
         {value}
       </dd>
-      <dt className="mt-[3px] text-[9px] leading-none text-ink-3">{label}</dt>
+      <dt className="mt-[3px] text-t9 leading-none text-ink-3">{label}</dt>
     </div>
   )
 }

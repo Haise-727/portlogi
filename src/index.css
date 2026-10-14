@@ -3,6 +3,16 @@
 @import 'tailwindcss';
 
 @theme {
+  /* type scale: every size multiplies --fs, which Settings changes (S / M / L) */
+  --text-t8: calc(9px * var(--fs));
+  --text-t9: calc(10px * var(--fs));
+  --text-t10: calc(11px * var(--fs));
+  --text-t11: calc(12px * var(--fs));
+  --text-t12: calc(13px * var(--fs));
+  --text-t14: calc(15px * var(--fs));
+  --text-t15: calc(16px * var(--fs));
+  --text-t30: calc(30px * var(--fs));
+
   --font-sans: 'Geist Variable', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'Geist Mono Variable', ui-monospace, monospace;
 
@@ -13,8 +23,8 @@
   --color-line: #1e262c;
   --color-line-hi: #2c363e;
   --color-ink: #e4ebf0;
-  --color-ink-2: #8b9aa5;
-  --color-ink-3: #56646e;
+  --color-ink-2: #a0aeb8;
+  --color-ink-3: #7a8994;
 
   /* the one accent: selection, route, chosen slot */
   --color-signal: #2fa9bc;
@@ -34,6 +44,42 @@
   --color-reject: #6e3a38;
 }
 
+:root {
+  --fs: 1.1;
+  color-scheme: dark;
+}
+:root[data-text='S'] { --fs: 1; }
+:root[data-text='M'] { --fs: 1.1; }
+:root[data-text='L'] { --fs: 1.25; }
+
+/* Light theme: same tokens, re-valued. Text greys are chosen for WCAG AA
+   (4.5:1) against both the page and the raised surfaces; the four priority
+   bands are darkened so they still read as colour on white. */
+:root[data-theme='light'] {
+  color-scheme: light;
+  --color-void: #f2f4f6;
+  --color-panel: #ffffff;
+  --color-raise: #eaeef1;
+  --color-line: #d6dce1;
+  --color-line-hi: #bcc6ce;
+  --color-ink: #11181d;
+  --color-ink-2: #36434d;
+  --color-ink-3: #56636d;
+  --color-signal: #0a7a8d;
+  --color-signal-dim: #a9d4db;
+  --color-run-optimised: #007b90;
+  --color-run-naive: #b03a66;
+  --color-critical: #c0392b;
+  --color-high: #9a5b06;
+  --color-normal: #3b6a86;
+  --color-low: #5a6a75;
+  --color-reject: #c4716d;
+}
+/* heavy dark-mode shadows look dirty on white */
+:root[data-theme='light'] [class*='shadow-['] {
+  box-shadow: 0 8px 24px rgba(20, 30, 40, 0.16) !important;
+}
+
 @layer base {
   html,
   body,
@@ -45,7 +91,7 @@
     background: var(--color-void);
     color: var(--color-ink);
     font-family: var(--font-sans);
-    font-size: 13px;
+    font-size: calc(13px * var(--fs));
     -webkit-font-smoothing: antialiased;
     overflow: hidden;
   }

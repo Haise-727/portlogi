@@ -3,6 +3,21 @@ export type PriorityBand = 'critical' | 'high' | 'normal' | 'low'
 export type ContainerStatus = 'inbound' | 'stored' | 'retrieving' | 'departed'
 export type Tier = number
 
+/** Exports come in through a gate and leave from a quay; imports come off a ship at a quay and leave through a gate. */
+export type Flow = 'export' | 'import'
+
+/** A business's booking of a haulier's truck to collect an import box. */
+export type Booking = {
+  fleetId: string
+  fleetName: string
+  /** sim-minutes: the truck is due from this time */
+  start: number
+  /** the truck waits no later than this */
+  end: number
+  madeAt: number
+  status: 'confirmed' | 'arrived' | 'released' | 'late'
+}
+
 export type Container = {
   /** ISO 6346 marking, e.g. "TUTX 441021 3" */
   id: string
@@ -19,8 +34,13 @@ export type Container = {
   slot: string | null
   tier: Tier | null
   status: ContainerStatus
-  /** gate the box came in through */
+  /** terminal the box arrived at: a gate for exports, a quay for imports */
   gate: string
+  /** defaults to an export */
+  flow?: Flow
+  /** the departure time is firm (booked). Imports start with only an estimate. */
+  declared?: boolean
+  booking?: Booking
   /** operator-named group; groups are kept together by the allocator */
   group?: string
 }

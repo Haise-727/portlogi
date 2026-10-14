@@ -32,11 +32,11 @@ export function LogStrip() {
         {recent.map((e) => (
           <li key={e.id} className="flex gap-[6px] border-b border-line px-2 py-[3px] last:border-b-0">
             <span className="mt-[3px] h-[8px] w-[2px] shrink-0" style={{ background: SEVERITY_COLOR[e.severity] }} />
-            <time className="shrink-0 font-mono text-[9px] leading-[14px] tabular-nums text-ink-3">{formatShort(e.at)}</time>
-            <span className="min-w-0 flex-1 truncate text-[10px] leading-[14px] text-ink-2">{e.message}</span>
+            <time className="shrink-0 font-mono text-t9 leading-[calc(14px*var(--fs))] tabular-nums text-ink-3">{formatShort(e.at)}</time>
+            <span className="min-w-0 flex-1 truncate text-t10 leading-[calc(14px*var(--fs))] text-ink-2">{e.message}</span>
           </li>
         ))}
-        {recent.length === 0 && <li className="px-2 py-[5px] text-[10px] text-ink-3">Nothing has happened yet.</li>}
+        {recent.length === 0 && <li className="px-2 py-[5px] text-t10 text-ink-3">Nothing has happened yet.</li>}
       </ul>
       <ChevronsUpDown size={11} className="absolute right-2 top-2 text-ink-3 opacity-0 transition-opacity group-hover:opacity-100" />
     </button>
@@ -66,8 +66,8 @@ export function LogDrawer() {
           aria-label="Activity log"
         >
           <header className="flex items-center gap-3 border-b border-line px-3 py-[5px]">
-            <h2 className="text-[11px] font-medium text-ink">Activity</h2>
-            <span className="text-[10px] text-ink-3">Click a line to see the yard as it was.</span>
+            <h2 className="text-t11 font-medium text-ink">Activity</h2>
+            <span className="text-t10 text-ink-3">Click a line to see the yard as it was.</span>
             <Button size="sm" variant={verbose ? 'active' : 'default'} className="ml-auto" onClick={toggleVerbose}>
               detail
             </Button>
@@ -89,11 +89,11 @@ export function LogDrawer() {
                     )}
                   >
                     <span className="mt-[3px] h-[9px] w-[2px] shrink-0" style={{ background: SEVERITY_COLOR[e.severity] }} />
-                    <time className="shrink-0 font-mono text-[9px] leading-[14px] tabular-nums text-ink-3">{formatClock(e.at)}</time>
+                    <time className="shrink-0 font-mono text-t9 leading-[calc(14px*var(--fs))] tabular-nums text-ink-3">{formatClock(e.at)}</time>
                     <span className="min-w-0 flex-1">
-                      <span className="text-[10px] leading-[14px] text-ink-2">{e.message}</span>
-                      {e.count && e.count > 1 && <span className="ml-[4px] font-mono text-[9px] text-ink-3">×{e.count}</span>}
-                      {verbose && e.detail && <span className="mt-[2px] block text-[9px] leading-[12px] text-ink-3">{e.detail}</span>}
+                      <span className="text-t10 leading-[calc(14px*var(--fs))] text-ink-2">{e.message}</span>
+                      {e.count && e.count > 1 && <span className="ml-[4px] font-mono text-t9 text-ink-3">×{e.count}</span>}
+                      {verbose && e.detail && <span className="mt-[2px] block text-t9 leading-[calc(12px*var(--fs))] text-ink-3">{e.detail}</span>}
                     </span>
                   </button>
                 </li>

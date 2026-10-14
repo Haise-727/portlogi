@@ -25,7 +25,7 @@ export function Toasts() {
           >
             <span className="mt-[3px] h-[10px] w-[2px] shrink-0 bg-signal" />
             <div className="min-w-0 flex-1">
-              <p className="text-[11px] leading-snug text-ink-2">{t.text}</p>
+              <p className="text-t11 leading-snug text-ink-2">{t.text}</p>
               {t.actionLabel && (
                 <Button
                   size="sm"

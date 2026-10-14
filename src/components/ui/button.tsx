@@ -3,7 +3,7 @@ import type { ButtonHTMLAttributes } from 'react'
 import { cn } from './cn'
 
 const button = cva(
-  'inline-flex shrink-0 items-center justify-center gap-[6px] whitespace-nowrap border text-[11px] transition-colors active:translate-y-px disabled:pointer-events-none disabled:opacity-40 [&_svg]:shrink-0',
+  'inline-flex shrink-0 items-center justify-center gap-[6px] whitespace-nowrap border text-t11 transition-colors active:translate-y-px disabled:pointer-events-none disabled:opacity-40 [&_svg]:shrink-0',
   {
     variants: {
       variant: {
@@ -17,7 +17,7 @@ const button = cva(
       size: {
         sm: 'h-[22px] px-[7px]',
         md: 'h-[26px] px-[10px]',
-        lg: 'h-[32px] px-3 text-[12px]',
+        lg: 'h-[32px] px-3 text-t12',
         icon: 'h-[26px] w-[26px]',
       },
     },

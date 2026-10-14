@@ -1,5 +1,5 @@
 import { motion } from 'motion/react'
-import { Ban, Boxes, FlaskConical, RotateCcw, ScanLine, X, Zap } from 'lucide-react'
+import { Ban, Boxes, FlaskConical, Landmark, RotateCcw, ScanLine, X, Zap } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { DEFAULT_WEIGHTS, type Weights } from '../../engine/allocator'
 import { DEFAULT_TIMING, type ScenarioName } from '../../engine/engine'
@@ -9,7 +9,7 @@ import { assignedKey, priorityAt, useYard, type Tab } from '../../store/app'
 import { BAND_COLOR } from '../theme'
 import { Button } from '../ui/button'
 import { cn } from '../ui/cn'
-import { Slider, Switch } from '../ui/controls'
+import { Segmented, Slider, Switch } from '../ui/controls'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/overlay'
 
 /**
@@ -35,7 +35,7 @@ export function Sidebar() {
     >
       <div className="flex h-full flex-col border-l border-line-hi bg-panel" style={{ width: SIDEBAR_W }}>
         <header className="flex items-center justify-between border-b border-line px-3 py-[6px]">
-          <h2 className="text-[11px] font-medium text-ink">Settings</h2>
+          <h2 className="text-t11 font-medium text-ink">Settings</h2>
           <button type="button" onClick={close} className="text-ink-3 transition-colors hover:text-ink" aria-label="Close settings">
             <X size={14} />
           </button>
@@ -71,8 +71,8 @@ function Section({ title, children, note }: { title: string; children: React.Rea
   return (
     <section className="border-b border-line px-3 py-3">
       <div className="mb-2 flex items-baseline justify-between">
-        <h3 className="text-[11px] font-medium text-ink-2">{title}</h3>
-        {note && <span className="font-mono text-[9px] text-ink-3">{note}</span>}
+        <h3 className="text-t11 font-medium text-ink-2">{title}</h3>
+        {note && <span className="font-mono text-t9 text-ink-3">{note}</span>}
       </div>
       {children}
     </section>
@@ -99,11 +99,18 @@ function RunTab() {
   const command = useYard((s) => s.command)
   const toggleExplored = useYard((s) => s.toggleExplored)
   const setCompareOpen = useYard((s) => s.setCompareOpen)
+  const setImpactOpen = useYard((s) => s.setImpactOpen)
   const reset = useYard((s) => s.reset)
   const feed = useYard((s) => s.scannerFeed)
   const reduce = useYard((s) => s.reduceMotion)
   const setReduce = useYard((s) => s.setReduceMotion)
-  const online = useYard((s) => s.scannerOnline)
+  const theme = useYard((s) => s.theme)
+  const setTheme = useYard((s) => s.setTheme)
+  const textSize = useYard((s) => s.textSize)
+  const setTextSize = useYard((s) => s.setTextSize)
+  const status = useYard((s) => s.scannerStatus)
+  const scannerUser = useYard((s) => s.scannerUser)
+  const scannerError = useYard((s) => s.scannerError)
   const lastScan = useYard((s) => s.lastScan)
   const setFeed = useYard((s) => s.setScannerFeed)
 
@@ -123,28 +130,54 @@ function RunTab() {
         </div>
       </Section>
 
-      <Section title="Hardware scanner" note={feed ? (online ? 'connected' : 'connecting…') : 'off'}>
+      <Section title="Hardware scanner" note={feed ? STATUS_NOTE[status] : 'off'}>
         <Switch label="Admit boxes from the RFID reader" checked={feed} onCheckedChange={setFeed} />
-        <p className="mt-1 text-[9px] leading-snug text-ink-3">
-          {feed
-            ? online
-              ? `Listening. ${lastScan ? `Last card ${lastScan}.` : 'Waiting for a card.'}`
-              : 'Backend not reachable. Start it with npm run server.'
-            : 'The ESP32 posts each card to the backend; this page admits that card’s container.'}
-        </p>
+        {feed && <ScannerAccount status={status} user={scannerUser} error={scannerError} lastScan={lastScan} />}
+        {!feed && (
+          <p className="mt-1 text-t8 leading-snug text-ink-3">
+            The ESP32 writes each card read to the cloud database; this page admits that card's container. Switching it on loads the cloud SDK and asks you to sign in.
+          </p>
+        )}
       </Section>
 
       <Section title="Scenarios" note="stress the yard">
         <ul className="grid grid-cols-1 gap-[6px]">
           {SCENARIOS.map((s) => (
             <li key={s.name}>
-              <Button className="h-auto w-full justify-between py-[6px]" disabled={replay} onClick={() => command({ t: 'scenario', name: s.name })}>
+              <Button
+                className="h-auto w-full flex-col items-start justify-start gap-[1px] whitespace-normal py-[6px] text-left"
+                disabled={replay}
+                onClick={() => command({ t: 'scenario', name: s.name })}
+              >
                 <span className="text-ink">{s.label}</span>
-                <span className="text-[10px] text-ink-3">{s.hint}</span>
+                <span className="text-t10 text-ink-3">{s.hint}</span>
               </Button>
             </li>
           ))}
         </ul>
+      </Section>
+
+      <Section title="Appearance">
+        <Segmented
+          label="Theme"
+          value={theme}
+          onChange={setTheme}
+          options={[
+            { value: 'system', label: 'System' },
+            { value: 'dark', label: 'Dark' },
+            { value: 'light', label: 'Light' },
+          ]}
+        />
+        <Segmented
+          label="Text size"
+          value={textSize}
+          onChange={setTextSize}
+          options={[
+            { value: 'S', label: 'S' },
+            { value: 'M', label: 'M' },
+            { value: 'L', label: 'L' },
+          ]}
+        />
       </Section>
 
       <Section title="View">
@@ -158,6 +191,10 @@ function RunTab() {
           <FlaskConical size={12} />
           Optimised vs first-available
         </Button>
+        <Button className="mt-2 w-full" onClick={() => setImpactOpen(true)}>
+          <Landmark size={12} />
+          Real ports and G2B
+        </Button>
         <Button className="mt-2 w-full" variant="ghost" onClick={reset}>
           <RotateCcw size={12} />
           Reset the yard
@@ -167,10 +204,102 @@ function RunTab() {
   )
 }
 
+const STATUS_NOTE: Record<string, string> = {
+  off: 'off',
+  connecting: 'connecting…',
+  signin: 'sign in',
+  online: 'connected',
+  error: 'problem',
+}
+
+/** Sign-in for the feed. Accounts are added by hand in the Firebase console; there is no sign-up here. */
+function ScannerAccount({
+  status,
+  user,
+  error,
+  lastScan,
+}: {
+  status: string
+  user: string | null
+  error: string | null
+  lastScan: string | null
+}) {
+  const signIn = useYard((s) => s.signInScanner)
+  const signOut = useYard((s) => s.signOutScanner)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [problem, setProblem] = useState<string | null>(null)
+
+  if (user) {
+    return (
+      <div className="mt-2">
+        <p className="text-t9 leading-snug text-ink-2">
+          Signed in as <span className="font-mono">{user}</span>.{' '}
+          {status === 'online' ? (lastScan ? `Listening. Last card ${lastScan}.` : 'Listening for a card.') : status === 'error' ? (error ?? 'Problem.') : 'Connecting…'}
+        </p>
+        <Button size="sm" className="mt-2" onClick={() => void signOut()}>
+          Sign out
+        </Button>
+      </div>
+    )
+  }
+
+  const field = 'h-[26px] w-full border border-line bg-raise px-2 text-t10 text-ink outline-none placeholder:text-ink-3 focus:border-signal'
+  return (
+    <form
+      className="mt-2 flex flex-col gap-2"
+      onSubmit={(e) => {
+        e.preventDefault()
+        setBusy(true)
+        setProblem(null)
+        signIn(email, password)
+          .catch((err: Error) => setProblem(err.message))
+          .finally(() => {
+            setBusy(false)
+            setPassword('')
+          })
+      }}
+    >
+      <input
+        className={field}
+        style={{ borderRadius: 2 }}
+        type="email"
+        autoComplete="username"
+        placeholder="Email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        onKeyDown={(e) => e.stopPropagation()}
+        required
+      />
+      <input
+        className={field}
+        style={{ borderRadius: 2 }}
+        type="password"
+        autoComplete="current-password"
+        placeholder="Password"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        onKeyDown={(e) => e.stopPropagation()}
+        required
+      />
+      <Button type="submit" variant="primary" disabled={busy || !email || !password}>
+        {busy ? 'Signing in…' : 'Sign in'}
+      </Button>
+      {(problem || (status === 'error' && error)) && (
+        <p className="text-t9 leading-snug" style={{ color: 'var(--color-critical)' }}>
+          {problem ?? error}
+        </p>
+      )}
+      <p className="text-t8 leading-snug text-ink-3">Accounts are created by the project owner. There is no sign-up here.</p>
+    </form>
+  )
+}
+
 function Legend() {
   const bands = ['critical', 'high', 'normal', 'low'] as const
   return (
-    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-ink-3">
+    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-t10 text-ink-3">
       {bands.map((b) => (
         <span key={b} className="flex items-center gap-[4px]">
           <span className="h-[8px] w-[3px]" style={{ background: BAND_COLOR[b] }} />
@@ -321,7 +450,7 @@ function LayoutEditor({ spec }: { spec: LayoutSpec }) {
                 type="button"
                 onClick={() => cycle(id)}
                 className={cn(
-                  'token flex h-[26px] items-center justify-center gap-[3px] border text-[9px] transition-colors',
+                  'token flex h-[26px] items-center justify-center gap-[3px] border text-t9 transition-colors',
                   d ? 'border-line bg-void text-ink-3' : p ? 'border-signal/45 bg-signal/10 text-signal' : 'border-line bg-raise text-ink-2 hover:border-line-hi',
                 )}
                 style={{ borderRadius: 2 }}
@@ -337,7 +466,7 @@ function LayoutEditor({ spec }: { spec: LayoutSpec }) {
       </Section>
 
       <div className="sticky bottom-0 border-t border-line bg-panel px-3 py-2">
-        {refusal && <p className="mb-2 text-[10px] leading-snug" style={{ color: 'var(--color-high)' }}>{refusal.message}</p>}
+        {refusal && <p className="mb-2 text-t10 leading-snug" style={{ color: 'var(--color-high)' }}>{refusal.message}</p>}
         <div className="grid grid-cols-2 gap-2">
           <Button
             variant="primary"
@@ -357,8 +486,8 @@ function LayoutEditor({ spec }: { spec: LayoutSpec }) {
             </Button>
           )}
         </div>
-        {pending && <p className="mt-2 text-[10px] leading-snug text-high">New arrivals are paused. The layout applies as soon as every vehicle has finished its job.</p>}
-        <p className="mt-2 text-[9px] leading-snug text-ink-3">Aisles are generated for you. A change waits for the vehicles to finish, and is refused if it would leave a stored box without a position.</p>
+        {pending && <p className="mt-2 text-t10 leading-snug text-high">New arrivals are paused. The layout applies as soon as every vehicle has finished its job.</p>}
+        <p className="mt-2 text-t9 leading-snug text-ink-3">Aisles are generated for you. A change waits for the vehicles to finish, and is refused if it would leave a stored box without a position.</p>
       </div>
     </div>
   )
@@ -381,7 +510,7 @@ function EdgeRow({
 }) {
   return (
     <div className="mb-2 last:mb-0">
-      <div className="mb-[3px] text-[10px] text-ink-3">{label}</div>
+      <div className="mb-[3px] text-t10 text-ink-3">{label}</div>
       <div className="flex flex-wrap gap-[3px]">
         {Array.from({ length: count }, (_, i) => from + i).map((x) => {
           const active = on.includes(x)
@@ -393,7 +522,7 @@ function EdgeRow({
               disabled={dead}
               onClick={() => onToggle(x)}
               className={cn(
-                'h-[22px] min-w-[24px] border px-1 font-mono text-[9px] transition-colors disabled:opacity-25',
+                'h-[22px] min-w-[24px] border px-1 font-mono text-t9 transition-colors disabled:opacity-25',
                 active ? 'border-signal/50 bg-signal/12 text-signal' : 'border-line bg-raise text-ink-3 hover:border-line-hi',
               )}
               style={{ borderRadius: 2 }}
@@ -446,7 +575,7 @@ function BoxesTab() {
             maxLength={24}
             disabled={readOnly}
             onKeyDown={(e) => e.stopPropagation()}
-            className="h-[26px] min-w-0 flex-1 border border-line bg-raise px-2 text-[11px] text-ink outline-none placeholder:text-ink-3 focus:border-signal"
+            className="h-[26px] min-w-0 flex-1 border border-line bg-raise px-2 text-t11 text-ink outline-none placeholder:text-ink-3 focus:border-signal"
             style={{ borderRadius: 2 }}
           />
           <Button
@@ -465,11 +594,11 @@ function BoxesTab() {
             Clear
           </Button>
         </div>
-        <p className="mt-1 text-[9px] text-ink-3">Grouped boxes are kept together by the allocator.</p>
+        <p className="mt-1 text-t9 text-ink-3">Grouped boxes are kept together by the allocator.</p>
       </div>
 
       <ul className="min-h-0 flex-1 divide-y divide-line overflow-y-auto">
-        {rows.length === 0 && <li className="px-3 py-4 text-[11px] text-ink-3">Nothing stored yet. Scan a container, or switch on Auto.</li>}
+        {rows.length === 0 && <li className="px-3 py-4 text-t11 text-ink-3">Nothing stored yet. Scan a container, or switch on Auto.</li>}
         {rows.map(({ c, p }) => {
           const queued = jobs.some((j) => j.containerId === c.id) || working.has(c.id)
           return (
@@ -479,14 +608,14 @@ function BoxesTab() {
                 <span className="h-[16px] w-[2px] shrink-0" style={{ background: BAND_COLOR[p.band] }} />
                 <span className="flex min-w-0 flex-1 flex-col gap-[2px]">
                   <span className="flex items-baseline gap-[5px]">
-                    <span className="font-mono text-[10px] text-ink">{shortId(c.id)}</span>
-                    <span className="token text-[9px] text-ink-3">{c.slot}</span>
-                    {c.group && <span className="truncate text-[9px] text-signal">{c.group}</span>}
-                    {p.overdue && <span className="token text-[8px] leading-none" style={{ color: 'var(--color-critical)' }}>overdue</span>}
+                    <span className="font-mono text-t10 text-ink">{shortId(c.id)}</span>
+                    <span className="token text-t9 text-ink-3">{c.slot}</span>
+                    {c.group && <span className="truncate text-t9 text-signal">{c.group}</span>}
+                    {p.overdue && <span className="token text-t8 leading-none" style={{ color: 'var(--color-critical)' }}>overdue</span>}
                   </span>
-                  <span className="truncate text-[9px] text-ink-3">{p.reason}</span>
+                  <span className="truncate text-t9 text-ink-3">{p.reason}</span>
                 </span>
-                <span className="shrink-0 font-mono text-[10px] tabular-nums text-ink-2">{queued ? '···' : `${Math.max(0, Math.round(c.etd - now))}m`}</span>
+                <span className="shrink-0 font-mono text-t10 tabular-nums text-ink-2">{queued ? '···' : `${Math.max(0, Math.round(c.etd - now))}m`}</span>
               </button>
             </li>
           )
@@ -532,7 +661,7 @@ function TuningTab() {
         <Button className="mt-1 w-full" disabled={readOnly} onClick={() => command({ t: 'weights', weights: { ...DEFAULT_WEIGHTS } })}>
           Restore defaults
         </Button>
-        <p className="mt-2 text-[9px] leading-snug text-ink-3">Takes effect on the next box placed. Setting rehandle risk to zero shows what the allocator is worth.</p>
+        <p className="mt-2 text-t9 leading-snug text-ink-3">Takes effect on the next box placed. Setting rehandle risk to zero shows what the allocator is worth.</p>
       </Section>
 
       <Section title="Handling times" note="sim-minutes">
@@ -560,7 +689,7 @@ function TuningTab() {
         <Button className="mt-1 w-full" disabled={readOnly} onClick={() => command({ t: 'timing', timing: { ...DEFAULT_TIMING } })}>
           Restore defaults
         </Button>
-        <p className="mt-2 text-[9px] leading-snug text-ink-3">Vehicles really stand still for these times, and corners cost extra. Traffic control books the same times, so a slower lift makes other vehicles wait for it.</p>
+        <p className="mt-2 text-t9 leading-snug text-ink-3">Vehicles really stand still for these times, and corners cost extra. Traffic control books the same times, so a slower lift makes other vehicles wait for it.</p>
       </Section>
     </div>
   )

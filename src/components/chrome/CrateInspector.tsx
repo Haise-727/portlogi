@@ -69,9 +69,9 @@ function Body({ c, onGrab }: { c: Container; onGrab: (e: React.PointerEvent) => 
       >
         <GripHorizontal size={12} className="text-ink-3" aria-hidden />
         <span className="h-[12px] w-[2px]" style={{ background: BAND_COLOR[p.band] }} />
-        <span className="font-mono text-[11px] text-ink">{c.id}</span>
+        <span className="font-mono text-t11 text-ink">{c.id}</span>
         <span
-          className="token border px-[4px] py-[1px] text-[8px] leading-none"
+          className="token border px-[4px] py-[1px] text-t8 leading-none"
           style={{ color: BAND_COLOR[p.band], borderColor: `color-mix(in srgb, ${BAND_COLOR[p.band]} 50%, transparent)`, borderRadius: 2 }}
         >
           {p.band}
@@ -135,20 +135,20 @@ function Details({ c, now }: { c: Container; now: number }) {
           options={(Object.keys(TYPE_LABEL) as ContainerType[]).map((t) => ({ value: t, label: TYPE_LABEL[t] }))}
           className="h-[22px] flex-1"
         />
-        <span className="font-mono text-[10px] tabular-nums text-ink-2">{p.score.toFixed(1)} pts</span>
+        <span className="font-mono text-t10 tabular-nums text-ink-2">{p.score.toFixed(1)} pts</span>
       </div>
 
       <ul className="border-b border-line px-2 py-[5px]">
         {p.factors.map((f) => (
           <li key={f.key} className="mb-[5px] last:mb-0">
             <div className="flex items-baseline justify-between">
-              <span className="text-[9px] text-ink-2">{f.label}</span>
-              <span className="font-mono text-[9px] tabular-nums text-ink-3">{f.points.toFixed(1)}</span>
+              <span className="text-t9 text-ink-2">{f.label}</span>
+              <span className="font-mono text-t9 tabular-nums text-ink-3">{f.points.toFixed(1)}</span>
             </div>
             <div className="mt-[2px] h-[2px] w-full bg-line">
               <div className="h-full" style={{ width: `${(f.points / maxPoints) * 100}%`, background: f.points === maxPoints ? BAND_COLOR[p.band] : 'var(--color-ink-3)' }} />
             </div>
-            <p className="mt-[2px] text-[9px] leading-[12px] text-ink-3">{f.detail}</p>
+            <p className="mt-[2px] text-t9 leading-[calc(12px*var(--fs))] text-ink-3">{f.detail}</p>
           </li>
         ))}
       </ul>
@@ -160,7 +160,7 @@ function Details({ c, now }: { c: Container; now: number }) {
           disabled={readOnly}
           placeholder="Group name"
           maxLength={24}
-          className="h-[22px] min-w-0 flex-1 border border-line bg-raise px-2 text-[11px] text-ink outline-none placeholder:text-ink-3 focus:border-signal"
+          className="h-[22px] min-w-0 flex-1 border border-line bg-raise px-2 text-t11 text-ink outline-none placeholder:text-ink-3 focus:border-signal"
           style={{ borderRadius: 2 }}
           onKeyDown={(e) => {
             e.stopPropagation()
@@ -190,21 +190,21 @@ function Details({ c, now }: { c: Container; now: number }) {
 
 function Why({ decision }: { decision: Decision | undefined }) {
   if (!decision) {
-    return <p className="px-3 py-3 text-[11px] leading-relaxed text-ink-3">This box has not been placed by the allocator yet. Once a vehicle is sent to set it down, the full reasoning appears here.</p>
+    return <p className="px-3 py-3 text-t11 leading-relaxed text-ink-3">This box has not been placed by the allocator yet. Once a vehicle is sent to set it down, the full reasoning appears here.</p>
   }
   const top = Math.max(...decision.breakdown.map((t) => t.points), 0)
   return (
     <div>
       <div className="flex items-end justify-between border-b border-line px-2 py-[7px]">
         <div>
-          <div className="font-mono text-[9px] leading-none text-ink-3">PLACED AT</div>
-          <div className="token mt-[3px] text-[15px] leading-none text-signal">
+          <div className="font-mono text-t9 leading-none text-ink-3">PLACED AT</div>
+          <div className="token mt-[3px] text-t15 leading-none text-signal">
             {decision.slot} · T{decision.tier + 1}
           </div>
         </div>
         <div className="text-right">
-          <div className="font-mono text-[9px] leading-none text-ink-3">{decision.strategy === 'naive' ? 'FIRST AVAILABLE' : `SCORE · LOWEST OF ${decision.evaluated}`}</div>
-          <div className="mt-[3px] font-mono text-[15px] leading-none tabular-nums text-ink">{decision.strategy === 'naive' ? '—' : decision.score.toFixed(1)}</div>
+          <div className="font-mono text-t9 leading-none text-ink-3">{decision.strategy === 'naive' ? 'FIRST AVAILABLE' : `SCORE · LOWEST OF ${decision.evaluated}`}</div>
+          <div className="mt-[3px] font-mono text-t15 leading-none tabular-nums text-ink">{decision.strategy === 'naive' ? '—' : decision.score.toFixed(1)}</div>
         </div>
       </div>
 
@@ -212,8 +212,8 @@ function Why({ decision }: { decision: Decision | undefined }) {
         {decision.breakdown.map((t) => (
           <li key={t.key} className="border-b border-line px-2 py-[5px]">
             <div className="flex items-baseline justify-between">
-              <span className="text-[10px] text-ink-2">{t.label}</span>
-              <span className="font-mono text-[10px] tabular-nums text-ink-3">
+              <span className="text-t10 text-ink-2">{t.label}</span>
+              <span className="font-mono text-t10 tabular-nums text-ink-3">
                 {t.points.toFixed(1)}
                 <span className="text-ink-3/60"> / {t.weight}</span>
               </span>
@@ -227,7 +227,7 @@ function Why({ decision }: { decision: Decision | undefined }) {
                 transition={{ type: 'spring', stiffness: 200, damping: 28 }}
               />
             </div>
-            <p className="mt-[3px] text-[9px] leading-[13px] text-ink-3">{t.detail}</p>
+            <p className="mt-[3px] text-t9 leading-[calc(13px*var(--fs))] text-ink-3">{t.detail}</p>
           </li>
         ))}
       </ul>
@@ -238,9 +238,9 @@ function Why({ decision }: { decision: Decision | undefined }) {
           <ul className="divide-y divide-line">
             {decision.runnersUp.map((r) => (
               <li key={r.slot} className="flex items-center gap-2 px-2 py-[4px]">
-                <span className="token w-[26px] text-[10px] text-ink-2">{r.slot}</span>
-                <span className="font-mono text-[10px] tabular-nums text-ink-3">{r.score.toFixed(1)}</span>
-                <span className="ml-auto font-mono text-[10px] tabular-nums text-ink-3">+{(r.score - decision.score).toFixed(1)}</span>
+                <span className="token w-[26px] text-t10 text-ink-2">{r.slot}</span>
+                <span className="font-mono text-t10 tabular-nums text-ink-3">{r.score.toFixed(1)}</span>
+                <span className="ml-auto font-mono text-t10 tabular-nums text-ink-3">+{(r.score - decision.score).toFixed(1)}</span>
               </li>
             ))}
           </ul>
@@ -253,8 +253,8 @@ function Why({ decision }: { decision: Decision | undefined }) {
           <ul className="divide-y divide-line">
             {decision.rejected.map((r) => (
               <li key={r.slot} className="flex gap-2 px-2 py-[4px]">
-                <span className="token w-[26px] shrink-0 text-[10px] text-ink-3">{r.slot}</span>
-                <span className="text-[10px] leading-[14px] text-ink-3">{r.reason}</span>
+                <span className="token w-[26px] shrink-0 text-t10 text-ink-3">{r.slot}</span>
+                <span className="text-t10 leading-[calc(14px*var(--fs))] text-ink-3">{r.reason}</span>
               </li>
             ))}
           </ul>
@@ -278,7 +278,7 @@ function Why({ decision }: { decision: Decision | undefined }) {
 function Sub({ text }: { text: string }) {
   return (
     <div className="border-y border-line bg-raise px-2 py-[3px]">
-      <span className="font-mono text-[9px] tracking-[0.08em] text-ink-3">{text}</span>
+      <span className="font-mono text-t9 tracking-[0.08em] text-ink-3">{text}</span>
     </div>
   )
 }
@@ -286,8 +286,8 @@ function Sub({ text }: { text: string }) {
 function Fact({ label, value }: { label: string; value: string }) {
   return (
     <span className="flex flex-col gap-[2px]">
-      <span className="font-mono text-[9px] leading-none text-ink-3">{label}</span>
-      <span className="font-mono text-[12px] leading-none tabular-nums text-ink">{value}</span>
+      <span className="font-mono text-t9 leading-none text-ink-3">{label}</span>
+      <span className="font-mono text-t12 leading-none tabular-nums text-ink">{value}</span>
     </span>
   )
 }
@@ -295,8 +295,8 @@ function Fact({ label, value }: { label: string; value: string }) {
 function Field({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
     <div className="border-r border-line px-2 py-[4px] last:border-r-0">
-      <dt className="font-mono text-[8px] leading-none text-ink-3">{label}</dt>
-      <dd className={`mt-[3px] truncate text-[10px] leading-none text-ink ${mono ? 'font-mono' : ''}`}>{value}</dd>
+      <dt className="font-mono text-t8 leading-none text-ink-3">{label}</dt>
+      <dd className={`mt-[3px] truncate text-t10 leading-none text-ink ${mono ? 'font-mono' : ''}`}>{value}</dd>
     </div>
   )
 }

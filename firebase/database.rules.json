@@ -1,0 +1,28 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "scans": {
+      // Anyone signed in can watch scans arrive. Accounts are created by hand in the console
+      // (sign-up is off), so "signed in" means someone the owner added.
+      ".read": "auth != null",
+      ".indexOn": ["at"],
+
+      "$scanId": {
+        // Only a device account (gate1@portlogi.example, gate2@..., ...) may write, and only a NEW
+        // record: nothing can be overwritten or deleted afterwards, so the log cannot be rewritten.
+        ".write": "auth != null && auth.token.email != null && auth.token.email.matches(/^gate[0-9]+@portlogi\\.example$/) && !data.exists()",
+
+        // The shape is fixed. The timestamp must be the server's own clock (the device sends
+        // {".sv": "timestamp"}), so a device cannot back-date or forge when a scan happened.
+        ".validate": "newData.hasChildren(['uid', 'reader', 'at']) && newData.child('uid').isString() && newData.child('uid').val().matches(/^[0-9A-F]{8,20}$/) && newData.child('reader').isString() && newData.child('reader').val().length <= 24 && newData.child('at').val() == now",
+
+        "uid": {},
+        "reader": {},
+        "at": {},
+        "$other": { ".validate": false }
+      }
+    }
+  }
+}

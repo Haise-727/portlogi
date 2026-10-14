@@ -1,0 +1,19 @@
+{
+  "name": "portlogi-infra",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "synth": "cdk synth --quiet",
+    "diff": "cdk diff",
+    "check-free": "node scripts/check-free.mjs",
+    "test": "node --test site/handler.test.mjs"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "2.170.0",
+    "constructs": "10.4.2"
+  },
+  "devDependencies": {
+    "aws-cdk": "2.1000.0"
+  }
+}

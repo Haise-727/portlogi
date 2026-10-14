@@ -55,7 +55,7 @@ export default function CompareDialog() {
         </div>
 
         {!r && progress === null && (
-          <p className="px-3 py-8 text-center text-[11px] text-ink-3">
+          <p className="px-3 py-8 text-center text-t11 text-ink-3">
             Runs the real simulation {seeds * 2} times in the background. Every box, weight and departure is identical between the two strategies; only slot choice differs.
           </p>
         )}
@@ -66,24 +66,24 @@ export default function CompareDialog() {
               <Hero label="First-available" stat={r.rehandles.naive} colour={NAIVE} />
               <Hero label="Allocator" stat={r.rehandles.optimised} colour={OPTIMISED} />
               <div className="px-3 py-3">
-                <div className="font-mono text-[9px] leading-none text-ink-3">REHANDLES AVOIDED</div>
-                <div className="mt-[6px] font-mono text-[30px] leading-none tabular-nums text-ink">−{Math.round(r.rehandleReduction * 100)}%</div>
-                <p className="mt-[6px] text-[10px] leading-snug text-ink-3">
+                <div className="font-mono text-t9 leading-none text-ink-3">REHANDLES AVOIDED</div>
+                <div className="mt-[6px] font-mono text-t30 leading-none tabular-nums text-ink">−{Math.round(r.rehandleReduction * 100)}%</div>
+                <p className="mt-[6px] text-t10 leading-snug text-ink-3">
                   {r.violations === 0 ? 'No safety violations in any run.' : `${r.violations} safety violations detected.`}
                 </p>
               </div>
             </div>
 
             <figure className="px-3 pb-1 pt-3">
-              <figcaption className="mb-2 text-[11px] text-ink-2">Rehandles per run (each pair is one seed)</figcaption>
+              <figcaption className="mb-2 text-t11 text-ink-2">Rehandles per run (each pair is one seed)</figcaption>
               <div className="h-[220px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={r.runs.map((x, i) => ({ seed: r.seeds[i], naive: x.naive.rehandles, optimised: x.optimised.rehandles }))} margin={{ top: 4, right: 8, bottom: 4, left: 0 }}>
                     <CartesianGrid vertical={false} stroke="var(--color-line)" />
-                    <XAxis dataKey="seed" tick={{ fill: 'var(--color-ink-3)', fontSize: 9, fontFamily: 'var(--font-mono)' }} tickLine={false} axisLine={{ stroke: 'var(--color-line)' }} />
-                    <YAxis allowDecimals={false} width={28} tick={{ fill: 'var(--color-ink-3)', fontSize: 10, fontFamily: 'var(--font-mono)' }} tickLine={false} axisLine={false} />
-                    <Tooltip cursor={{ fill: 'var(--color-raise)' }} contentStyle={{ background: 'var(--color-void)', border: '1px solid var(--color-line-hi)', borderRadius: 2, fontSize: 11 }} />
-                    <Legend iconType="plainline" wrapperStyle={{ fontSize: 10 }} />
+                    <XAxis dataKey="seed" tick={{ fill: 'var(--color-ink-3)', fontFamily: 'var(--font-mono)', style: { fontSize: 'calc(10px * var(--fs))' } }} tickLine={false} axisLine={{ stroke: 'var(--color-line)' }} />
+                    <YAxis allowDecimals={false} width={28} tick={{ fill: 'var(--color-ink-3)', fontFamily: 'var(--font-mono)', style: { fontSize: 'calc(11px * var(--fs))' } }} tickLine={false} axisLine={false} />
+                    <Tooltip cursor={{ fill: 'var(--color-raise)' }} contentStyle={{ background: 'var(--color-void)', border: '1px solid var(--color-line-hi)', borderRadius: 2, fontSize: 'calc(12px * var(--fs))' }} />
+                    <Legend iconType="plainline" wrapperStyle={{ fontSize: 'calc(11px * var(--fs))' }} />
                     <Bar dataKey="naive" name="First-available" fill={NAIVE} isAnimationActive={false} />
                     <Bar dataKey="optimised" name="Allocator" fill={OPTIMISED} isAnimationActive={false} />
                   </BarChart>
@@ -93,7 +93,7 @@ export default function CompareDialog() {
 
             <table className="w-full border-t border-line text-left">
               <thead>
-                <tr className="border-b border-line font-mono text-[9px] font-normal tracking-[0.08em] text-ink-3">
+                <tr className="border-b border-line font-mono text-t9 font-normal tracking-[0.08em] text-ink-3">
                   <th className="px-3 py-[4px] font-normal">MEASURE (MEAN ± 95% CI)</th>
                   <th className="w-[150px] px-3 py-[4px] text-right font-normal">FIRST-AVAILABLE</th>
                   <th className="w-[150px] px-3 py-[4px] text-right font-normal">ALLOCATOR</th>
@@ -107,7 +107,7 @@ export default function CompareDialog() {
               </tbody>
             </table>
 
-            <p className="border-t border-line px-3 py-2 text-[10px] leading-snug text-ink-3">
+            <p className="border-t border-line px-3 py-2 text-t10 leading-snug text-ink-3">
               {r.seeds.length} seeds, identical arrivals within each pair. Rehandles are counted where a terminal pays for them, at retrieval, not predicted at placement. Both strategies obey the same hard rules and the same traffic control.
             </p>
           </>
@@ -122,13 +122,13 @@ function Hero({ label, stat, colour }: { label: string; stat: Stat; colour: stri
     <div className="border-r border-line px-3 py-3">
       <div className="flex items-center gap-[6px]">
         <span className="h-[8px] w-[8px]" style={{ background: colour }} />
-        <span className="font-mono text-[9px] leading-none text-ink-3">{label.toUpperCase()}</span>
+        <span className="font-mono text-t9 leading-none text-ink-3">{label.toUpperCase()}</span>
       </div>
       <div className="mt-[6px] flex items-baseline gap-2">
-        <span className="font-mono text-[30px] leading-none tabular-nums text-ink">{stat.mean.toFixed(1)}</span>
-        <span className="font-mono text-[11px] text-ink-3">± {stat.ci95.toFixed(1)}</span>
+        <span className="font-mono text-t30 leading-none tabular-nums text-ink">{stat.mean.toFixed(1)}</span>
+        <span className="font-mono text-t11 text-ink-3">± {stat.ci95.toFixed(1)}</span>
       </div>
-      <div className="mt-1 text-[10px] text-ink-3">rehandles per run</div>
+      <div className="mt-1 text-t10 text-ink-3">rehandles per run</div>
     </div>
   )
 }
@@ -137,9 +137,9 @@ function Row({ label, a, b, digits = 1 }: { label: string; a: Stat; b: Stat; dig
   const f = (s: Stat) => `${s.mean.toFixed(digits)} ± ${s.ci95.toFixed(digits)}`
   return (
     <tr className="border-b border-line">
-      <td className="px-3 py-[5px] text-[10px] text-ink-2">{label}</td>
-      <td className="px-3 py-[5px] text-right font-mono text-[11px] tabular-nums text-ink-2">{f(a)}</td>
-      <td className="px-3 py-[5px] text-right font-mono text-[11px] tabular-nums" style={{ color: b.mean < a.mean ? 'var(--color-ink)' : 'var(--color-ink-2)' }}>
+      <td className="px-3 py-[5px] text-t10 text-ink-2">{label}</td>
+      <td className="px-3 py-[5px] text-right font-mono text-t11 tabular-nums text-ink-2">{f(a)}</td>
+      <td className="px-3 py-[5px] text-right font-mono text-t11 tabular-nums" style={{ color: b.mean < a.mean ? 'var(--color-ink)' : 'var(--color-ink-2)' }}>
         {f(b)}
       </td>
     </tr>

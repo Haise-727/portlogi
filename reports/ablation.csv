@@ -1,5 +1,6 @@
 config,rehandles_mean,rehandles_ci95,cells_mean,makespan_mean
 All terms,2.02,0.44,861,342
+ETD rule only (rehandle term alone),2.85,0.45,910,355
 No rehandle risk,7.13,0.55,872,346
 No travel,1.88,0.50,866,343
 No cluster,2.23,0.39,852,342

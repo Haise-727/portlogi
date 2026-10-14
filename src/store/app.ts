@@ -12,9 +12,15 @@ import { buildLayout, defaultSpec, type Layout, type LayoutSpec } from '../engin
 import { computePriority, type PriorityResult } from '../engine/priority'
 import { ReplayCursor, Session } from '../engine/session'
 import type { Container } from '../engine/types'
+import type { FeedApi, FeedStatus } from '../lib/scanFeed'
 
 const SEED = 20260908
 let toastSeq = 0
+/** the running hardware feed, if any; kept out of React state because it is a live connection */
+let feedApi: FeedApi | null = null
+export function setFeedApi(api: FeedApi | null): void {
+  feedApi = api
+}
 
 /** Tiny persisted flags. Storage can be blocked (private windows), so every access is guarded. */
 function readFlag(key: string): boolean {
@@ -22,6 +28,21 @@ function readFlag(key: string): boolean {
     return localStorage.getItem('portlogi.' + key) === '1'
   } catch {
     return false
+  }
+}
+function readChoice<T extends string>(key: string, allowed: readonly T[], fallback: T): T {
+  try {
+    const v = localStorage.getItem('portlogi.' + key) as T | null
+    return v && allowed.includes(v) ? v : fallback
+  } catch {
+    return fallback
+  }
+}
+function writeStr(key: string, value: string): void {
+  try {
+    localStorage.setItem('portlogi.' + key, value)
+  } catch {
+    // not persisted; the page still works
   }
 }
 function writeFlag(key: string, on: boolean): void {
@@ -66,6 +87,7 @@ export type AppState = {
   tab: Tab
   logOpen: boolean
   compareOpen: boolean
+  impactOpen: boolean
 
   weights: Weights
   timing: Timing
@@ -73,7 +95,11 @@ export type AppState = {
   pendingLayout: LayoutSpec | null
   /** listen to the backend for RFID scans from the ESP32 */
   scannerFeed: boolean
-  scannerOnline: boolean
+  /** where the hardware feed stands; 'off' when switched off */
+  scannerStatus: 'off' | FeedStatus
+  /** the signed-in account's email, shown in Settings */
+  scannerUser: string | null
+  scannerError: string | null
   /** UID of the most recent card, for the status line */
   lastScan: string | null
   /** sim-minutes between the last engine step and now, for smooth vehicle motion */
@@ -82,7 +108,12 @@ export type AppState = {
   reduceMotion: boolean
   menuSeen: boolean
   toasts: Toast[]
+  theme: ThemeChoice
+  textSize: TextSize
 }
+
+export type ThemeChoice = 'system' | 'dark' | 'light'
+export type TextSize = 'S' | 'M' | 'L'
 
 export type Toast = { id: number; text: string; actionLabel?: string; action?: () => void }
 
@@ -96,10 +127,15 @@ export type AppActions = {
   applyLayout: (spec: LayoutSpec) => void
   cancelPendingLayout: () => void
   setReduceMotion: (on: boolean) => void
+  setTheme: (t: ThemeChoice) => void
+  setTextSize: (s: TextSize) => void
   showToast: (t: Omit<Toast, 'id'>) => void
   dismissToast: (id: number) => void
   setScannerFeed: (on: boolean) => void
-  setScannerOnline: (online: boolean) => void
+  setScannerStatus: (status: 'off' | FeedStatus, detail?: string) => void
+  setScannerUser: (email: string | null) => void
+  signInScanner: (email: string, password: string) => Promise<void>
+  signOutScanner: () => Promise<void>
   /** A card was read at the gate: admit its container. */
   cardScanned: (uid: string) => void
 
@@ -115,6 +151,7 @@ export type AppActions = {
   closeSidebar: () => void
   setLogOpen: (open: boolean) => void
   setCompareOpen: (open: boolean) => void
+  setImpactOpen: (open: boolean) => void
 
   replayAt: (tick: number) => void
   scrub: (tick: number) => void
@@ -144,16 +181,21 @@ export const useYard = create<AppState & AppActions>((set, get) => ({
   tab: 'run',
   logOpen: false,
   compareOpen: false,
+  impactOpen: false,
   weights: { ...DEFAULT_WEIGHTS },
   timing: { ...DEFAULT_TIMING },
   pendingLayout: null,
   scannerFeed: false,
-  scannerOnline: false,
+  scannerStatus: 'off',
+  scannerUser: null,
+  scannerError: null,
   lastScan: null,
   frac: 0,
   reduceMotion: readFlag('reduce-motion'),
   menuSeen: readFlag('menu-seen'),
   toasts: [],
+  theme: readChoice('theme', ['system', 'dark', 'light'], 'system'),
+  textSize: readChoice('text', ['S', 'M', 'L'], 'M'),
 
   frame(dt) {
     const st = get()
@@ -201,6 +243,14 @@ export const useYard = create<AppState & AppActions>((set, get) => ({
     set({ pendingLayout: null })
   },
 
+  setTheme(theme) {
+    writeStr('theme', theme)
+    set({ theme })
+  },
+  setTextSize(textSize) {
+    writeStr('text', textSize)
+    set({ textSize })
+  },
   setReduceMotion(on) {
     writeFlag('reduce-motion', on)
     set({ reduceMotion: on })
@@ -215,10 +265,20 @@ export const useYard = create<AppState & AppActions>((set, get) => ({
   },
 
   setScannerFeed(on) {
-    set({ scannerFeed: on, scannerOnline: on ? get().scannerOnline : false })
+    set({ scannerFeed: on, scannerStatus: on ? 'connecting' : 'off', scannerError: null, ...(on ? {} : { scannerUser: null }) })
   },
-  setScannerOnline(online) {
-    set({ scannerOnline: online })
+  setScannerStatus(status, detail) {
+    set({ scannerStatus: status, scannerError: status === 'error' ? (detail ?? 'The feed stopped.') : null })
+  },
+  setScannerUser(email) {
+    set({ scannerUser: email })
+  },
+  async signInScanner(email, password) {
+    if (!feedApi) throw new Error('The feed is not running.')
+    await feedApi.signIn(email, password)
+  },
+  async signOutScanner() {
+    await feedApi?.signOut()
   },
   cardScanned(uid) {
     set({ lastScan: uid })
@@ -283,6 +343,9 @@ export const useYard = create<AppState & AppActions>((set, get) => ({
   },
   setCompareOpen(open) {
     set({ compareOpen: open })
+  },
+  setImpactOpen(open) {
+    set({ impactOpen: open })
   },
 
   replayAt(tick) {
