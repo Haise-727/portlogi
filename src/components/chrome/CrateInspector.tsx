@@ -3,6 +3,7 @@ import { ArrowRightLeft, GripHorizontal, PackageCheck, X } from 'lucide-react'
 import type { RefObject } from 'react'
 import { useState } from 'react'
 import type { Decision } from '../../engine/engine'
+import { lineOf } from '../../data/business'
 import { formatMinutes } from '../../engine/priority'
 import type { Container, ContainerType } from '../../engine/types'
 import { priorityAt, useYard } from '../../store/app'
@@ -124,6 +125,9 @@ function Details({ c, now }: { c: Container; now: number }) {
         <Field label="Destination" value={c.destination} />
         <Field label="Vessel" value={c.vessel} />
         <Field label="ETD" value={formatMinutes(c.etd - now)} mono />
+        <Field label="Line" value={`${lineOf(c.id).name}`} />
+        <Field label="Flow" value={c.flow === 'import' ? 'import' : 'export'} />
+        <Field label="Departure" value={c.booking ? `booked, ${c.booking.fleetName}` : c.flow === 'import' ? 'estimate' : 'vessel schedule'} />
       </dl>
 
       <div className="flex items-center gap-2 border-b border-line px-2 py-[5px]">

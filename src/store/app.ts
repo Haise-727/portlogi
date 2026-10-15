@@ -88,6 +88,7 @@ export type AppState = {
   logOpen: boolean
   compareOpen: boolean
   impactOpen: boolean
+  businessOpen: boolean
 
   weights: Weights
   timing: Timing
@@ -152,6 +153,7 @@ export type AppActions = {
   setLogOpen: (open: boolean) => void
   setCompareOpen: (open: boolean) => void
   setImpactOpen: (open: boolean) => void
+  setBusinessOpen: (open: boolean) => void
 
   replayAt: (tick: number) => void
   scrub: (tick: number) => void
@@ -182,6 +184,7 @@ export const useYard = create<AppState & AppActions>((set, get) => ({
   logOpen: false,
   compareOpen: false,
   impactOpen: false,
+  businessOpen: false,
   weights: { ...DEFAULT_WEIGHTS },
   timing: { ...DEFAULT_TIMING },
   pendingLayout: null,
@@ -346,6 +349,9 @@ export const useYard = create<AppState & AppActions>((set, get) => ({
   },
   setImpactOpen(open) {
     set({ impactOpen: open })
+  },
+  setBusinessOpen(open) {
+    set({ businessOpen: open })
   },
 
   replayAt(tick) {

@@ -1,5 +1,5 @@
 import { motion } from 'motion/react'
-import { Ban, Boxes, FlaskConical, Landmark, RotateCcw, ScanLine, X, Zap } from 'lucide-react'
+import { Ban, Boxes, FlaskConical, Landmark, RotateCcw, ScanLine, Truck, X, Zap } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { DEFAULT_WEIGHTS, type Weights } from '../../engine/allocator'
 import { DEFAULT_TIMING, type ScenarioName } from '../../engine/engine'
@@ -86,6 +86,7 @@ function Section({ title, children, note }: { title: string; children: React.Rea
 const SCENARIOS: { name: ScenarioName; label: string; hint: string }[] = [
   { name: 'surge', label: 'Vessel surge', hint: 'Ten boxes arrive in quick succession' },
   { name: 'gate-burst', label: 'Gate burst', hint: 'Six boxes hit the gates at once' },
+  { name: 'discharge', label: 'Vessel discharge', hint: 'Six import boxes come off a ship, waiting for trucks' },
   { name: 'reefer-storm', label: 'Reefer storm', hint: 'The next six arrivals are all reefers' },
   { name: 'cutoff-rush', label: 'Cutoff rush', hint: 'One vessel closes in 15 minutes' },
   { name: 'breakdown', label: 'Vehicle breakdown', hint: 'The busiest vehicle stops for 25 minutes' },
@@ -100,6 +101,7 @@ function RunTab() {
   const toggleExplored = useYard((s) => s.toggleExplored)
   const setCompareOpen = useYard((s) => s.setCompareOpen)
   const setImpactOpen = useYard((s) => s.setImpactOpen)
+  const setBusinessOpen = useYard((s) => s.setBusinessOpen)
   const reset = useYard((s) => s.reset)
   const feed = useYard((s) => s.scannerFeed)
   const reduce = useYard((s) => s.reduceMotion)
@@ -190,6 +192,10 @@ function RunTab() {
         <Button className="w-full" onClick={() => setCompareOpen(true)}>
           <FlaskConical size={12} />
           Optimised vs first-available
+        </Button>
+        <Button className="mt-2 w-full" onClick={() => setBusinessOpen(true)}>
+          <Truck size={12} />
+          Business desk: book a truck
         </Button>
         <Button className="mt-2 w-full" onClick={() => setImpactOpen(true)}>
           <Landmark size={12} />

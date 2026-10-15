@@ -14,6 +14,7 @@ import { useYard } from './store/app'
 /** Recharts is only ever on screen inside the comparison dialog, so it is not in the first load. */
 const CompareDialog = lazy(() => import('./components/chrome/CompareDialog'))
 const ImpactDialog = lazy(() => import('./components/chrome/ImpactDialog'))
+const BusinessDesk = lazy(() => import('./components/chrome/BusinessDesk'))
 
 /**
  * The yard owns the screen. Everything else is either a thin bar, a three-line
@@ -27,6 +28,7 @@ export default function App() {
   useScannerFeed()
   const compareOpen = useYard((s) => s.compareOpen)
   const impactOpen = useYard((s) => s.impactOpen)
+  const businessOpen = useYard((s) => s.businessOpen)
   const select = useYard((s) => s.select)
   const reduce = useYard((s) => s.reduceMotion)
   const theme = useYard((s) => s.theme)
@@ -98,6 +100,11 @@ export default function App() {
         {impactOpen && (
           <Suspense fallback={null}>
             <ImpactDialog />
+          </Suspense>
+        )}
+        {businessOpen && (
+          <Suspense fallback={null}>
+            <BusinessDesk />
           </Suspense>
         )}
       </TipProvider>

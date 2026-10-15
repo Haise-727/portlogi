@@ -37,6 +37,9 @@ export function useShortcuts(): void {
         case 'c':
           s.setCompareOpen(true)
           break
+        case 'b':
+          s.setBusinessOpen(true)
+          break
         case 'i':
           s.setImpactOpen(true)
           break
