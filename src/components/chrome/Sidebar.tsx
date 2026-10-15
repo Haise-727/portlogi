@@ -102,7 +102,7 @@ function RunTab() {
   const setCompareOpen = useYard((s) => s.setCompareOpen)
   const setImpactOpen = useYard((s) => s.setImpactOpen)
   const setBusinessOpen = useYard((s) => s.setBusinessOpen)
-  const setMapOpen = useYard((s) => s.setMapOpen)
+  const goLanding = useYard((s) => s.goLanding)
   const reset = useYard((s) => s.reset)
   const feed = useYard((s) => s.scannerFeed)
   const reduce = useYard((s) => s.reduceMotion)
@@ -198,9 +198,9 @@ function RunTab() {
           <Truck size={12} />
           Business desk: book a truck
         </Button>
-        <Button className="mt-2 w-full" onClick={() => setMapOpen(true)}>
+        <Button className="mt-2 w-full" onClick={goLanding}>
           <Map size={12} />
-          Ports map
+          All ports (map)
         </Button>
         <Button className="mt-2 w-full" onClick={() => setImpactOpen(true)}>
           <Landmark size={12} />

@@ -188,3 +188,18 @@
 .stagger > *:nth-child(4) { animation-delay: 135ms; }
 .stagger > *:nth-child(5) { animation-delay: 180ms; }
 .stagger > *:nth-child(n + 6) { animation-delay: 225ms; }
+
+/* Port names on the landing map: small, readable on both light and dark map tiles. */
+.leaflet-tooltip.port-label {
+  background: rgba(255, 255, 255, 0.92);
+  color: #14202a;
+  border: 1px solid #9fb2bd;
+  border-radius: 2px;
+  padding: 1px 5px;
+  font-size: 11px;
+  font-weight: 600;
+  box-shadow: none;
+}
+.leaflet-tooltip.port-label::before {
+  display: none;
+}

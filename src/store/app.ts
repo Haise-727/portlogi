@@ -98,9 +98,10 @@ export type AppState = {
   compareOpen: boolean
   impactOpen: boolean
   businessOpen: boolean
-  mapOpen: boolean
+  screen: 'landing' | 'yard'
   portId: string
-  setMapOpen: (open: boolean) => void
+  goLanding: () => void
+  enterYard: () => void
   openPort: (id: string) => void
 
   weights: Weights
@@ -183,7 +184,7 @@ function publish(): Pick<AppState, 'view' | 'layout' | 'liveTick'> {
 
 export const useYard = create<AppState & AppActions>((set, get) => ({
   ...publish(),
-  running: true,
+  running: false,
   speed: 1,
   replay: null,
   selected: null,
@@ -198,7 +199,7 @@ export const useYard = create<AppState & AppActions>((set, get) => ({
   compareOpen: false,
   impactOpen: false,
   businessOpen: false,
-  mapOpen: false,
+  screen: 'landing',
   portId: 'voc',
   weights: { ...DEFAULT_WEIGHTS },
   timing: { ...DEFAULT_TIMING },
@@ -369,12 +370,15 @@ export const useYard = create<AppState & AppActions>((set, get) => ({
   setBusinessOpen(open) {
     set({ businessOpen: open })
   },
-  setMapOpen(open) {
-    set({ mapOpen: open })
+  goLanding() {
+    set({ screen: 'landing', running: false })
+  },
+  enterYard() {
+    set({ screen: 'yard', running: true })
   },
   openPort(id) {
     portSeed = id === 'voc' ? SEED : hashSeed(id)
-    set({ portId: id, mapOpen: false })
+    set({ portId: id, screen: 'yard' })
     get().reset()
   },
 

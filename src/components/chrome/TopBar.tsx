@@ -18,6 +18,7 @@ const SPEEDS = [0.5, 1, 2, 4, 8]
 export function TopBar() {
   const now = useYard((s) => Math.floor(s.view.now * 60) / 60)
   const running = useYard((s) => s.running)
+  const goLanding = useYard((s) => s.goLanding)
   const speed = useYard((s) => s.speed)
   const auto = useYard((s) => s.view.auto)
   const replay = useYard((s) => s.replay !== null)
@@ -36,7 +37,13 @@ export function TopBar() {
 
   return (
     <header className="flex h-9 items-center gap-3 border-b border-line bg-panel px-3">
-      <span className="font-mono text-t12 font-semibold tracking-[0.16em] text-ink">PORTLOGI</span>
+      <button
+        onClick={goLanding}
+        title="Back to the map of ports"
+        className="font-mono text-t12 font-semibold tracking-[0.16em] text-ink hover:text-signal"
+      >
+        PORTLOGI
+      </button>
       <span className="hidden h-[11px] w-px bg-line-hi sm:block" />
       <PortName />
 
@@ -46,7 +53,11 @@ export function TopBar() {
         {replay && (
           <span
             className="token border px-[5px] py-[2px] text-t9 leading-none"
-            style={{ color: 'var(--color-high)', borderColor: 'color-mix(in srgb, var(--color-high) 55%, transparent)', borderRadius: 2 }}
+            style={{
+              color: 'var(--color-high)',
+              borderColor: 'color-mix(in srgb, var(--color-high) 55%, transparent)',
+              borderRadius: 2,
+            }}
           >
             replay
           </span>
@@ -98,9 +109,18 @@ export function TopBar() {
         <Tip label="Layout, scenarios, boxes and tuning (M)">
           <span className="relative">
             {!menuSeen && (
-              <span aria-hidden className="pointer-events-none absolute inset-0 animate-ping border border-signal opacity-60" style={{ borderRadius: 2 }} />
+              <span
+                aria-hidden
+                className="pointer-events-none absolute inset-0 animate-ping border border-signal opacity-60"
+                style={{ borderRadius: 2 }}
+              />
             )}
-            <Button variant={sidebar ? 'active' : menuSeen ? 'default' : 'primary'} onClick={() => (sidebar ? closeSidebar() : openSidebar())} aria-label="Settings" aria-expanded={sidebar}>
+            <Button
+              variant={sidebar ? 'active' : menuSeen ? 'default' : 'primary'}
+              onClick={() => (sidebar ? closeSidebar() : openSidebar())}
+              aria-label="Settings"
+              aria-expanded={sidebar}
+            >
               <Menu size={13} />
               <span className="hidden lg:inline">Settings</span>
             </Button>

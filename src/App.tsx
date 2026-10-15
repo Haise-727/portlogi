@@ -15,7 +15,7 @@ import { useYard } from './store/app'
 const CompareDialog = lazy(() => import('./components/chrome/CompareDialog'))
 const ImpactDialog = lazy(() => import('./components/chrome/ImpactDialog'))
 const BusinessDesk = lazy(() => import('./components/chrome/BusinessDesk'))
-const PortMap = lazy(() => import('./components/chrome/PortMap'))
+const Landing = lazy(() => import('./components/Landing'))
 
 /**
  * The yard owns the screen. Everything else is either a thin bar, a three-line
@@ -30,7 +30,7 @@ export default function App() {
   const compareOpen = useYard((s) => s.compareOpen)
   const impactOpen = useYard((s) => s.impactOpen)
   const businessOpen = useYard((s) => s.businessOpen)
-  const mapOpen = useYard((s) => s.mapOpen)
+  const screen = useYard((s) => s.screen)
   const select = useYard((s) => s.select)
   const reduce = useYard((s) => s.reduceMotion)
   const theme = useYard((s) => s.theme)
@@ -76,24 +76,26 @@ export default function App() {
   return (
     <MotionConfig reducedMotion={reduce ? 'always' : 'never'}>
       <TipProvider>
-        <div className="grid h-full grid-rows-[36px_minmax(0,1fr)] bg-void">
-          <TopBar />
-          <main className="flex min-h-0 overflow-hidden">
-            <section
-              ref={stage}
-              className="relative min-w-0 flex-1 overflow-hidden"
-              onClick={(e) => e.target === e.currentTarget && select(null)}
-            >
-              <YardView />
-              <LogStrip />
-              <LogDrawer />
-              <DigOutPrompt />
-              <CrateInspector bounds={stage} />
-              <Toasts />
-            </section>
-            <Sidebar />
-          </main>
-        </div>
+        {screen === 'landing' ? (
+          <Suspense fallback={<div className="h-full bg-void" />}>
+            <Landing />
+          </Suspense>
+        ) : (
+          <div className="grid h-full grid-rows-[36px_minmax(0,1fr)] bg-void">
+            <TopBar />
+            <main className="flex min-h-0 overflow-hidden">
+              <section ref={stage} className="relative min-w-0 flex-1 overflow-hidden" onClick={(e) => e.target === e.currentTarget && select(null)}>
+                <YardView />
+                <LogStrip />
+                <LogDrawer />
+                <DigOutPrompt />
+                <CrateInspector bounds={stage} />
+                <Toasts />
+              </section>
+              <Sidebar />
+            </main>
+          </div>
+        )}
         {compareOpen && (
           <Suspense fallback={null}>
             <CompareDialog />
@@ -102,11 +104,6 @@ export default function App() {
         {impactOpen && (
           <Suspense fallback={null}>
             <ImpactDialog />
-          </Suspense>
-        )}
-        {mapOpen && (
-          <Suspense fallback={null}>
-            <PortMap />
           </Suspense>
         )}
         {businessOpen && (
