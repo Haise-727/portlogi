@@ -48,7 +48,7 @@ Tag clearly: **Built** = engine, interface, business desk, ports map, secure hos
 
 ## 7. SECURE AND LOW COST
 - Runs on AWS Lambda over HTTPS; Firebase rules allow gate devices to add scans only.
-- Security Headers grade **A+**; 31 of 31 own live checks passed. [FIG] screenshot of the A+ result
+- Security Headers and SSL Labs grade **A+**; 31 of 31 own live checks passed. [FIG] screenshot of the A+ result
 - Free-tier hosting; no real port data stored.
 
 ## 8. MULTIPLE PORTS

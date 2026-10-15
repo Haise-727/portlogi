@@ -53,3 +53,4 @@ This checks what an outside visitor can observe. It is not a penetration test an
 | Script in the URL is not reflected back | pass |  |
 
 Security Headers (Snyk) scan, 15 Oct 2026 12:20 UTC: grade A+ (screenshot: securityheaders-A-plus-2026-10-15.png).
+SSL Labs scan, 15 Oct 2026 12:22-12:31 UTC: grade A+ on all 6 server endpoints (see screenshot ssllabs-A-plus-2026-10-15.png).

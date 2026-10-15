@@ -63,7 +63,7 @@ Message: **book at discharge, not at pickup.** Later booking still removes truck
 **Slide 11: Security and deployment**
 - Hosted on AWS Lambda over HTTPS; free-tier cost checks before each deploy.
 - Security Headers grade **A+** (scan 15 Oct 2026); our own 31 of 31 live checks pass (CSP, HSTS, no path traversal, etc.).
-- Firebase rules: gate devices can only add scan records; sign-up disabled. **[YOU]** add the SSL Labs result.
+- Firebase rules: gate devices can only add scan records; sign-up disabled. SSL Labs grade **A+** on all 6 endpoints (15 Oct 2026).
 - Not claimed: "unhackable". It is a demo with no real port data.
 
 **Slide 12: Smart City relevance** 
