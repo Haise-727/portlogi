@@ -41,6 +41,8 @@ export type Container = {
   /** the departure time is firm (booked). Imports start with only an estimate. */
   declared?: boolean
   booking?: Booking
+  /** when the box left the yard, in sim-minutes */
+  departedAt?: number
   /** operator-named group; groups are kept together by the allocator */
   group?: string
 }

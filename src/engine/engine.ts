@@ -201,6 +201,8 @@ export type Command =
   | { t: 'admit'; gate?: string; tagUid?: string; type?: ContainerType; group?: string; flow?: Flow }
   | { t: 'book'; id: string; fleetId: string; fleetName: string; start: number; end: number }
   | { t: 'cancelBooking'; id: string }
+  /** A better guess at when a box will be collected, without a firm booking (from an appointment slot, a forecast, a call). */
+  | { t: 'estimate'; id: string; etd: number }
   | { t: 'retrieve'; id: string }
   | { t: 'confirm' }
   | { t: 'cancel' }
@@ -641,6 +643,11 @@ export class Engine {
         return this.cmdBook(cmd.id, cmd.fleetId, cmd.fleetName, cmd.start, cmd.end)
       case 'cancelBooking':
         return this.cmdCancelBooking(cmd.id)
+      case 'estimate': {
+        const c = this.s.containers[cmd.id]
+        if (c && c.status !== 'departed') this.patch(cmd.id, { etd: Math.round(cmd.etd) })
+        return
+      }
       case 'confirm':
         return this.cmdConfirm()
       case 'cancel':
@@ -1855,7 +1862,7 @@ export class Engine {
 
     if (leg.kind !== 'depart') return { ...agv, mode: 'idle', liftT: 0 }
     const c = s.containers[leg.containerId]
-    this.patch(leg.containerId, { status: 'departed', slot: null, tier: null })
+    this.patch(leg.containerId, { status: 'departed', slot: null, tier: null, departedAt: s.now })
     const m = this.w('metrics')
     m.departed++
     m.dwellTotal += s.now - c.arrivedAt
