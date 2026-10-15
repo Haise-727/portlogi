@@ -1,5 +1,5 @@
 import { motion } from 'motion/react'
-import { Ban, Boxes, FlaskConical, Landmark, RotateCcw, ScanLine, Truck, X, Zap } from 'lucide-react'
+import { Ban, Boxes, FlaskConical, Landmark, Map, RotateCcw, ScanLine, Truck, X, Zap } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { DEFAULT_WEIGHTS, type Weights } from '../../engine/allocator'
 import { DEFAULT_TIMING, type ScenarioName } from '../../engine/engine'
@@ -102,6 +102,7 @@ function RunTab() {
   const setCompareOpen = useYard((s) => s.setCompareOpen)
   const setImpactOpen = useYard((s) => s.setImpactOpen)
   const setBusinessOpen = useYard((s) => s.setBusinessOpen)
+  const setMapOpen = useYard((s) => s.setMapOpen)
   const reset = useYard((s) => s.reset)
   const feed = useYard((s) => s.scannerFeed)
   const reduce = useYard((s) => s.reduceMotion)
@@ -196,6 +197,10 @@ function RunTab() {
         <Button className="mt-2 w-full" onClick={() => setBusinessOpen(true)}>
           <Truck size={12} />
           Business desk: book a truck
+        </Button>
+        <Button className="mt-2 w-full" onClick={() => setMapOpen(true)}>
+          <Map size={12} />
+          Ports map
         </Button>
         <Button className="mt-2 w-full" onClick={() => setImpactOpen(true)}>
           <Landmark size={12} />

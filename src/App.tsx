@@ -15,6 +15,7 @@ import { useYard } from './store/app'
 const CompareDialog = lazy(() => import('./components/chrome/CompareDialog'))
 const ImpactDialog = lazy(() => import('./components/chrome/ImpactDialog'))
 const BusinessDesk = lazy(() => import('./components/chrome/BusinessDesk'))
+const PortMap = lazy(() => import('./components/chrome/PortMap'))
 
 /**
  * The yard owns the screen. Everything else is either a thin bar, a three-line
@@ -29,6 +30,7 @@ export default function App() {
   const compareOpen = useYard((s) => s.compareOpen)
   const impactOpen = useYard((s) => s.impactOpen)
   const businessOpen = useYard((s) => s.businessOpen)
+  const mapOpen = useYard((s) => s.mapOpen)
   const select = useYard((s) => s.select)
   const reduce = useYard((s) => s.reduceMotion)
   const theme = useYard((s) => s.theme)
@@ -100,6 +102,11 @@ export default function App() {
         {impactOpen && (
           <Suspense fallback={null}>
             <ImpactDialog />
+          </Suspense>
+        )}
+        {mapOpen && (
+          <Suspense fallback={null}>
+            <PortMap />
           </Suspense>
         )}
         {businessOpen && (

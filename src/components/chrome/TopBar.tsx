@@ -1,5 +1,6 @@
 import { Activity, Menu, Moon, Pause, Play, ScanLine, Sun } from 'lucide-react'
 import type { ReactNode } from 'react'
+import { PORTS } from '../../data/ports'
 import { formatClock } from '../../lib/time'
 import { formatMinutes } from '../../engine/priority'
 import { useYard } from '../../store/app'
@@ -37,7 +38,7 @@ export function TopBar() {
     <header className="flex h-9 items-center gap-3 border-b border-line bg-panel px-3">
       <span className="font-mono text-t12 font-semibold tracking-[0.16em] text-ink">PORTLOGI</span>
       <span className="hidden h-[11px] w-px bg-line-hi sm:block" />
-      <span className="hidden text-t11 text-ink-3 md:block">V.O. Chidambaranar Port, Thoothukudi</span>
+      <PortName />
 
       <Metrics />
 
@@ -172,5 +173,16 @@ function Stat({ label, value, tint }: { label: string; value: ReactNode; tint?: 
       </dd>
       <dt className="mt-[3px] text-t9 leading-none text-ink-3">{label}</dt>
     </div>
+  )
+}
+
+function PortName() {
+  const id = useYard((s) => s.portId)
+  const p = PORTS.find((x) => x.id === id)
+  return (
+    <span className="hidden text-t11 text-ink-3 md:block">
+      {p?.name ?? id}
+      {id !== 'voc' && ' (illustrative yard)'}
+    </span>
   )
 }

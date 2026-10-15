@@ -55,7 +55,15 @@ function writeFlag(key: string, on: boolean): void {
 
 export type Tab = 'run' | 'layout' | 'boxes' | 'tuning'
 
+let portSeed = SEED
 let session = new Session({ seed: SEED })
+
+/** A stable seed per port id, so each port's illustrative yard is the same every time. */
+function hashSeed(id: string): number {
+  let h = 2166136261
+  for (const ch of id) h = Math.imul(h ^ ch.charCodeAt(0), 16777619)
+  return h >>> 0
+}
 let cursor: ReplayCursor | null = null
 
 /** The engine whose state is currently on screen. */
@@ -89,6 +97,10 @@ export type AppState = {
   compareOpen: boolean
   impactOpen: boolean
   businessOpen: boolean
+  mapOpen: boolean
+  portId: string
+  setMapOpen: (open: boolean) => void
+  openPort: (id: string) => void
 
   weights: Weights
   timing: Timing
@@ -185,6 +197,8 @@ export const useYard = create<AppState & AppActions>((set, get) => ({
   compareOpen: false,
   impactOpen: false,
   businessOpen: false,
+  mapOpen: false,
+  portId: 'voc',
   weights: { ...DEFAULT_WEIGHTS },
   timing: { ...DEFAULT_TIMING },
   pendingLayout: null,
@@ -297,7 +311,7 @@ export const useYard = create<AppState & AppActions>((set, get) => ({
   },
 
   reset() {
-    session = new Session({ seed: SEED })
+    session = new Session({ seed: portSeed })
     cursor = null
     set({
       ...publish(),
@@ -352,6 +366,14 @@ export const useYard = create<AppState & AppActions>((set, get) => ({
   },
   setBusinessOpen(open) {
     set({ businessOpen: open })
+  },
+  setMapOpen(open) {
+    set({ mapOpen: open })
+  },
+  openPort(id) {
+    portSeed = id === 'voc' ? SEED : hashSeed(id)
+    set({ portId: id, mapOpen: false })
+    get().reset()
   },
 
   replayAt(tick) {
