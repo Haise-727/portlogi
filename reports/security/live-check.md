@@ -1,7 +1,7 @@
 # Live security check
 
 Target: https://psjkcvqmjxpwimkenx7bbmsfky0fxqmj.lambda-url.ap-south-1.on.aws
-Run: 2026-10-15T05:26:15.371Z
+Run: 2026-10-15T11:37:58.277Z
 Result: **31 of 31 checks passed**
 
 This checks what an outside visitor can observe. It is not a penetration test and it does not cover the AWS account itself (IAM, billing) or Firebase rules.
@@ -51,3 +51,5 @@ This checks what an outside visitor can observe. It is not a penetration test an
 | Missing script is a 404, not HTML | pass |  |
 | Oversized path does not crash it | pass |  |
 | Script in the URL is not reflected back | pass |  |
+
+Security Headers (Snyk) scan, 15 Oct 2026 12:20 UTC: grade A+ (screenshot: securityheaders-A-plus-2026-10-15.png).
