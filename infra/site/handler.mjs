@@ -41,7 +41,7 @@ export const CSP = [
   "default-src 'self'",
   "script-src 'self'",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob:",
+  "img-src 'self' data: blob: https://tile.openstreetmap.org",
   "font-src 'self' data:",
   `connect-src 'self' https://${DB_HOST} wss://${DB_HOST} https://identitytoolkit.googleapis.com https://securetoken.googleapis.com`,
   "worker-src 'self' blob:",

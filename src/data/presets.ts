@@ -1,0 +1,60 @@
+import { DEFAULT_TIMING, type Timing } from '../engine/engine'
+import { DEFAULT_WEIGHTS, type Weights } from '../engine/allocator'
+import { defaultSpec, type LayoutSpec } from '../engine/layout'
+
+/**
+ * One illustrative yard per port. These are NOT the real yards (their layouts were not found in a source); they are
+ * plausible variations chosen to make the ports feel different: size, stack height, how many reefer plugs, how many
+ * gates and quays, how many vehicles, and what the allocator is asked to care about.
+ */
+export type Preset = { spec: LayoutSpec; weights: Weights; timing: Timing; blurb: string }
+
+const W = (o: Partial<Weights>): Weights => ({ ...DEFAULT_WEIGHTS, ...o })
+const T = (o: Partial<Timing>): Timing => ({ ...DEFAULT_TIMING, ...o })
+const row = (r: string, n: number) => Array.from({ length: n }, (_, i) => `${r}${i + 1}`)
+
+export const PRESETS: Record<string, Preset> = {
+  voc: { spec: defaultSpec(), weights: W({}), timing: T({}), blurb: 'The reference yard: 3 x 4, two tiers.' },
+  jnpa: {
+    spec: { rows: 5, cols: 7, tiers: 3, powered: [...row('A', 7), ...row('B', 7)], disabled: [], gates: [2, 4, 6], quays: [2, 6], pads: [1, 4, 8], agvs: 4 },
+    weights: W({ travel: 20, spread: 8 }),
+    timing: T({ lift: 0.5, gate: 0.7, quay: 0.7 }),
+    blurb: 'Large and busy: 5 x 7, three tiers, three gates, four vehicles, fast handling.',
+  },
+  mundra: {
+    spec: { rows: 4, cols: 8, tiers: 4, powered: row('A', 8), disabled: [], gates: [3, 6], quays: [2, 5, 7], pads: [1, 5, 9], agvs: 4 },
+    weights: W({ rehandle: 50, cluster: 20, access: 14 }),
+    timing: T({ lift: 0.5, gate: 0.8 }),
+    blurb: 'Tall stacks, wide: 4 x 8, four tiers, three quays; rehandling is penalised hard.',
+  },
+  chennai: {
+    spec: { rows: 4, cols: 5, tiers: 2, powered: ['A1', 'A2', 'B1'], disabled: ['C3'], gates: [1, 5], quays: [3], pads: [1, 6], agvs: 3 },
+    weights: W({ access: 26, travel: 12 }),
+    timing: T({ gate: 1.1, quay: 1.1 }),
+    blurb: 'Space-constrained city port: 4 x 5, low stacks, one slot out of service, wide aisles preferred.',
+  },
+  kamarajar: {
+    spec: { rows: 3, cols: 6, tiers: 3, powered: row('A', 6), disabled: [], gates: [3], quays: [2, 5], pads: [1, 4, 7], agvs: 3 },
+    weights: W({ cluster: 22, spread: 14 }),
+    timing: T({ lift: 0.55 }),
+    blurb: 'Newer yard: 3 x 6, three tiers, groups kept together; heavy on reefer plugs.',
+  },
+  cochin: {
+    spec: { rows: 3, cols: 5, tiers: 2, powered: [...row('A', 5), ...row('B', 3)], disabled: [], gates: [2], quays: [4], pads: [1, 6], agvs: 2 },
+    weights: W({ travel: 18 }),
+    timing: T({ lift: 0.7, gate: 1, quay: 1, slowFactor: 2.6 }),
+    blurb: 'Island terminal with a lot of reefers: 3 x 5, many plugs, slower handling.',
+  },
+  vizag: {
+    spec: { rows: 4, cols: 4, tiers: 3, powered: ['A1', 'A2'], disabled: ['B2', 'C3'], gates: [1, 4], quays: [2, 3], pads: [1, 5], agvs: 3 },
+    weights: W({ rehandle: 35, spread: 16, access: 22 }),
+    timing: T({}),
+    blurb: 'Compact with obstacles: 4 x 4, two slots out of service, two gates.',
+  },
+  kolkata: {
+    spec: { rows: 2, cols: 6, tiers: 2, powered: ['A1', 'A2', 'A3'], disabled: [], gates: [3], quays: [5], pads: [1, 7], agvs: 2 },
+    weights: W({ travel: 22, rehandle: 36 }),
+    timing: T({ lift: 0.75, gate: 1.2, quay: 1.2, slowFactor: 2.8 }),
+    blurb: 'River port: long and shallow, 2 x 6, slow handling, travel distance matters most.',
+  },
+}

@@ -1,3 +1,4 @@
+import { PRESETS } from '../data/presets'
 import { create } from 'zustand'
 import { DEFAULT_WEIGHTS, type Weights } from '../engine/allocator'
 import {
@@ -311,7 +312,8 @@ export const useYard = create<AppState & AppActions>((set, get) => ({
   },
 
   reset() {
-    session = new Session({ seed: portSeed })
+    const pr = PRESETS[get().portId] ?? PRESETS.voc
+    session = new Session({ seed: portSeed, spec: pr.spec, weights: { ...pr.weights }, timing: { ...pr.timing } })
     cursor = null
     set({
       ...publish(),
@@ -319,8 +321,8 @@ export const useYard = create<AppState & AppActions>((set, get) => ({
       selected: null,
       movingId: null,
       checked: [],
-      weights: { ...DEFAULT_WEIGHTS },
-      timing: { ...DEFAULT_TIMING },
+      weights: { ...pr.weights },
+      timing: { ...pr.timing },
       running: true,
       pendingLayout: null,
     })
