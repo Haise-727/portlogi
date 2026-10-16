@@ -141,3 +141,19 @@ Estimates disagree and come from low-authority research publishers, so cite with
 |---|---|---|---|
 | 2025 | USD 5.8 B (TOS, Marketintelo) | Port automation, throughput growth | Navis N4, INFORM, Kaleris |
 | 2034 | USD 11.4 B (same source) | Digital single windows, G2B services | Same, plus PCS1x and LDB in India |
+
+---
+
+**26. Inventors** **[YOU]** Full names, register numbers, department and role of each team member. If anyone is not from VIT Chennai (for example an outside collaborator), they must also sign the No Objection Certificate in `classDocs`. If everyone is VIT Chennai, the NOC is not needed.
+
+**27. User information**
+a. Potential users: port authorities, terminal operators, shipping lines, clearing agents, hauliers and truck operators; later inland container depots and dry ports.
+b. Age group: working adults, roughly 22 to 60 (yard planners, gate staff, dispatchers, logistics managers). **[CHECK]** no survey was done.
+c. Expected benefits: fewer wasted container moves, shorter truck waits, a reason shown for each placement, bookings that give the yard a real pickup time. Measured in simulation only.
+d. Cost advantage: runs in a browser on free-tier cloud hosting, with a low-cost RFID reader at the gate; commercial yard-planning software is licensed and typically costly. **[CHECK]** no price comparison was gathered, so say "expected" and avoid numbers.
+
+**28. Technology readiness level**
+Tick **TRL 3** (experimental proof of concept) and say that parts of the software are validated in simulation (TRL 4 for that part only). The hardware gate is not built and no relevant environment has been used, so do not tick TRL 5 or above.
+
+**29. Additional notes**
+Say that all results are simulation results, real yard layouts and rehandle rates are not public, the businesses and hauliers are fictional, and the ports map shows illustrative yards. Mention the public demo URL and the security scan grades (A+ on Security Headers and SSL Labs).

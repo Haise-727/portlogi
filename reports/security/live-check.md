@@ -1,7 +1,7 @@
 # Live security check
 
 Target: https://psjkcvqmjxpwimkenx7bbmsfky0fxqmj.lambda-url.ap-south-1.on.aws
-Run: 2026-10-15T11:37:58.277Z
+Run: 2026-10-15T18:48:10.504Z
 Result: **31 of 31 checks passed**
 
 This checks what an outside visitor can observe. It is not a penetration test and it does not cover the AWS account itself (IAM, billing) or Firebase rules.
@@ -33,7 +33,7 @@ This checks what an outside visitor can observe. It is not a penetration test an
 |---|---|---|
 | TLS 1.2 or newer | pass | TLSv1.3, TLS_AES_128_GCM_SHA256 |
 | Certificate chain trusted | pass | issuer: Amazon |
-| Certificate is not about to expire | pass | 182 days left |
+| Certificate is not about to expire | pass | 181 days left |
 | Plain HTTP (port 80) is not served | pass | port 80: no answer |
 
 ## Hostile requests
@@ -51,6 +51,3 @@ This checks what an outside visitor can observe. It is not a penetration test an
 | Missing script is a 404, not HTML | pass |  |
 | Oversized path does not crash it | pass |  |
 | Script in the URL is not reflected back | pass |  |
-
-Security Headers (Snyk) scan, 15 Oct 2026 12:20 UTC: grade A+ (screenshot: securityheaders-A-plus-2026-10-15.png).
-SSL Labs scan, 15 Oct 2026 12:22-12:31 UTC: grade A+ on all 6 server endpoints (see screenshot ssllabs-A-plus-2026-10-15.png).
