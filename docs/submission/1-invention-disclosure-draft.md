@@ -21,13 +21,13 @@ container yard, stacking, rehandle, re-shuffle, expected departure time, slot al
 Present technology:
 - Terminal Operating Systems (for example Navis N4 Expert Decking, INFORM Yard Optimizer) assign slots from live yard state; one vendor case study reports 25% fewer rehandles.
 - Truck appointment systems reveal pickup time windows; research models exist for stacking with departure information (Dekker et al. 2006; Ku and Arthanari 2016).
-- Conflict-free multi-AGV routing by time-window reservation (Klimm et al.; HHLA CTA Hamburg).
+- Conflict-free multi-AGV routing by time-window reservation (Möhring et al. 2005; HHLA CTA Hamburg).
 - In India: Logistics Data Bank RFID tags, the PCS1x single window, RFID gates at some terminals.
 
 Limitations: commercial systems are closed and expensive; research models assume departure times are known, or study them offline; few handle *uncertain* departure times; decisions are rarely explained to the operator; nothing joins gate, allocator, traffic control and business booking in one open, replayable system.
 
 **5. Prior art**
-Literature: Dekker et al. 2006; Ku and Arthanari 2016 (EJOR 252); stochastic container relocation (arXiv 1703.04769); Klimm et al. static routing preprint; Kim, Jeon and Ryu grid-block reservation; WSC 2022 paper on AGV deadlocks.
+Literature: Dekker et al. 2006; Ku and Arthanari 2016 (EJOR 252); stochastic container relocation (arXiv 1703.04769); Möhring, Köhler, Gawrilow and Stenzel 2005 (conflict-free real-time AGV routing); Kim, Jeon and Ryu grid-block reservation; WSC 2022 paper on AGV deadlocks.
 Products: Navis N4 Expert Decking; INFORM Yard Optimizer; Kaleris.
 Patents seen (claims not read): US5511923A, US 10647530, US11866260B2.
 **[CHECK]** do a proper search on Google Patents, Espacenet and InPASS (CPC B65G 63/04, G06Q 10/08).
@@ -117,7 +117,7 @@ Web search only (see Q5); no patent database was queried. **[YOU]** run Google P
 | 2 | Ku and Arthanari 2016 | Stacking with departure time windows | We add booking after placement and pre-staging |
 | 3 | Navis Expert Decking | Slot assignment from yard state | We add explanation, replay and open G2B booking |
 | 4 | INFORM Yard Optimizer | Dwell and loading-sequence based optimisation | As above |
-| 5 | Klimm et al.; Kim et al. | Time-window or grid reservation for AGVs | Open-ended final-cell claim; cycle-aware refuge |
+| 5 | Möhring et al. 2005; Kim et al. 2007 | Time-window or grid reservation for AGVs | Open-ended final-cell claim; cycle-aware refuge |
 | 6 | US5511923A, US 10647530 **[CHECK]** | Terminal layout; horizontal transport conflicts | Read the claims and compare |
 
 **22. Would a person of average skill have arrived at it?**

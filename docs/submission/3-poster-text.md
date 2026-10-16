@@ -67,5 +67,5 @@ Tag clearly: **Built** = engine, interface, business desk, ports map, secure hos
 - Planned: ESP32 + RFID gate with measured latency, forecasts of pickup time, links to national port systems.
 
 ## FOOTER
-References: Dekker et al. 2006; Ku and Arthanari 2016 (EJOR 252); Klimm et al., conflict-free AGV routing; S&P Global Q1 2024 via BusinessWorld; JNPA/LDB Analytics Oct 2024. Map © OpenStreetMap contributors.
+References: Dekker et al. 2006; Ku and Arthanari 2016 (EJOR 252); Möhring et al. 2005, conflict-free AGV routing; S&P Global Q1 2024 via BusinessWorld; JNPA/LDB Analytics Oct 2024. Map © OpenStreetMap contributors.
 QR code: live site **[YOU]** generate from https://psjkcvqmjxpwimkenx7bbmsfky0fxqmj.lambda-url.ap-south-1.on.aws/
