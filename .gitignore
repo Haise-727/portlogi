@@ -30,3 +30,6 @@ infra/.site-build
 
 # local secrets (never commit)
 .secrets/
+
+# screenshots from testing
+shots/

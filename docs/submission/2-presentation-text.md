@@ -70,7 +70,7 @@ Message: **book at discharge, not at pickup.** Later booking still removes truck
 - Citizens and businesses: shorter truck waits, less idling and congestion near the port, lower handling cost.
 - Sustainability: fewer wasted moves means less fuel or energy (not yet measured).
 - SDGs: 9 (industry, innovation, infrastructure), 11 (sustainable cities), 12 (efficient resource use), 13 (climate). **[CHECK]** keep only those you can justify.
-- Scalable: ports map with eight Indian ports, each with its own illustrative yard.
+- Scalable: ports map with 17 Indian ports, each with its own illustrative yard.
 
 **Slide 13: Limitations and next steps**
 - All results are from simulation; the real yard layout and rehandle rate of VOC Port are not public.

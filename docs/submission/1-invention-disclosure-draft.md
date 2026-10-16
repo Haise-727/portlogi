@@ -1,3 +1,5 @@
+> **Superseded:** the filled Word form (Invention_Disclosure_Form_FILLED.docx) is the current version. This file is the older working draft.
+
 # Invention disclosure form: draft answers (Section A)
 
 Draft for you to rewrite in your own words (AI-similarity limit). Facts and numbers come from this repo. **[YOU]** marks things only you can supply; **[CHECK]** marks things to verify before submitting. Fields follow the order in `classDocs/Invention DisclosureForm...docx`.

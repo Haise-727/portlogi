@@ -53,7 +53,7 @@ Tag clearly: **Built** = engine, interface, business desk, ports map, secure hos
 
 ## 8. MULTIPLE PORTS
 [FIG] ports map screenshot
-- Eight Indian ports, each with its own illustrative yard (size, tiers, vehicles, settings).
+- 17 Indian ports, each with its own illustrative yard (size, tiers, vehicles, settings).
 - Illustrative only: real yard layouts are not public.
 
 ## 9. CITIZEN AND SMART CITY BENEFITS
