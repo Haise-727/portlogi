@@ -33,3 +33,6 @@ infra/.site-build
 
 # screenshots from testing
 shots/
+
+# firmware secrets
+firmware/**/secrets.h
