@@ -31,7 +31,7 @@
 #include "time.h"
 #include "secrets.h"
 
-#define SEND_TO_CLOUD 1
+#define SEND_TO_CLOUD 0
 
 #define PIN_SS 5
 #define PIN_RST 22
