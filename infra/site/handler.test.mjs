@@ -110,7 +110,9 @@ describe('security', () => {
   });
 
   it('has a CSP that blocks inline script, eval, plugins, framing and base-tag tricks', () => {
-    assert.match(CSP, /script-src 'self'(;|$)/);
+    // scripts: this site, plus the Firebase region's database hosts (the SDK's long-polling fallback). Nothing else.
+    const scriptSrc = CSP.split(';').map((d) => d.trim()).find((d) => d.startsWith('script-src '));
+    assert.equal(scriptSrc, "script-src 'self' https://*.asia-southeast1.firebasedatabase.app");
     assert.doesNotMatch(CSP, /script-src[^;]*unsafe-(inline|eval)/);
     assert.match(CSP, /object-src 'none'/);
     assert.match(CSP, /frame-ancestors 'none'/);

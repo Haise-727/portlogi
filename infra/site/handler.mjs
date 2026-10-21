@@ -43,11 +43,15 @@ const DB_REGION_HOSTS = '*.asia-southeast1.firebasedatabase.app';
 
 export const CSP = [
   "default-src 'self'",
-  "script-src 'self'",
+  // The database SDK falls back to long polling (small scripts from the region's database hosts) when a network
+  // blocks WebSockets, so those hosts are allowed to serve scripts too. Nothing else outside this site is.
+  `script-src 'self' https://${DB_REGION_HOSTS}`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https://tile.openstreetmap.org",
   "font-src 'self' data:",
   `connect-src 'self' https://${DB_HOST} wss://${DB_HOST} https://${DB_REGION_HOSTS} wss://${DB_REGION_HOSTS} https://identitytoolkit.googleapis.com https://securetoken.googleapis.com`,
+  // the long-polling fallback also opens a small hidden frame on the same database host
+  `frame-src https://${DB_REGION_HOSTS}`,
   "worker-src 'self' blob:",
   "object-src 'none'",
   "base-uri 'self'",

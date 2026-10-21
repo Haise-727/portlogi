@@ -21,7 +21,8 @@ const h = (n) => res.headers.get(n) || '';
 check('Headers', 'HTTP 200 for the app', res.status === 200, String(res.status));
 check('Headers', 'Content-Security-Policy present', !!h('content-security-policy'));
 const csp = h('content-security-policy');
-check('Headers', "CSP: scripts only from 'self', no unsafe-inline or eval", /script-src 'self'(;|$)/.test(csp) && !/script-src[^;]*unsafe-/.test(csp), (csp.match(/script-src[^;]*/) || [''])[0]);
+// scripts: this site, plus the Firebase region's database hosts (the SDK's long-polling fallback). Nothing else.
+check('Headers', "CSP: scripts only from 'self' and the Firebase region hosts, no unsafe-inline or eval", /script-src 'self'( https:\/\/\*\.asia-southeast1\.firebasedatabase\.app)?(;|$)/.test(csp) && !/script-src[^;]*unsafe-/.test(csp), (csp.match(/script-src[^;]*/) || [''])[0]);
 check('Headers', 'CSP: no plugins (object-src none)', /object-src 'none'/.test(csp));
 check('Headers', 'CSP: cannot be framed (frame-ancestors none)', /frame-ancestors 'none'/.test(csp));
 check('Headers', 'CSP: no wildcard default-src', !/default-src[^;]*\*/.test(csp));

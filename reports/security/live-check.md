@@ -1,7 +1,7 @@
 # Live security check
 
 Target: https://psjkcvqmjxpwimkenx7bbmsfky0fxqmj.lambda-url.ap-south-1.on.aws
-Run: 2026-10-21T08:16:32.849Z
+Run: 2026-10-21T08:30:46.305Z
 Result: **31 of 31 checks passed**
 
 This checks what an outside visitor can observe. It is not a penetration test and it does not cover the AWS account itself (IAM, billing) or Firebase rules.
@@ -12,7 +12,7 @@ This checks what an outside visitor can observe. It is not a penetration test an
 |---|---|---|
 | HTTP 200 for the app | pass | 200 |
 | Content-Security-Policy present | pass |  |
-| CSP: scripts only from 'self', no unsafe-inline or eval | pass | script-src 'self' |
+| CSP: scripts only from 'self' and the Firebase region hosts, no unsafe-inline or eval | pass | script-src 'self' https://*.asia-southeast1.firebasedatabase.app |
 | CSP: no plugins (object-src none) | pass |  |
 | CSP: cannot be framed (frame-ancestors none) | pass |  |
 | CSP: no wildcard default-src | pass |  |
