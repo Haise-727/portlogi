@@ -55,17 +55,22 @@ export async function startFeed(h: FeedHandlers): Promise<FeedApi> {
     )
   }
 
+  // The database connection is often up before anyone signs in, and its "connected" event does not
+  // fire again after sign-in. So remember the last value and use it when the user appears.
+  let connected = false
+
   const stopAuth = auth.onAuthStateChanged(a, (user) => {
     h.onUser(user?.email ?? null)
     unsubscribeScans?.()
     unsubscribeScans = null
     if (!user) return h.onStatus('signin')
-    h.onStatus('connecting')
+    h.onStatus(connected ? 'online' : 'connecting')
     void watchScans()
   })
 
   unsubscribeConn = db.onValue(db.ref(database, '.info/connected'), (s) => {
-    if (a.currentUser) h.onStatus(s.val() ? 'online' : 'connecting')
+    connected = Boolean(s.val())
+    if (a.currentUser) h.onStatus(connected ? 'online' : 'connecting')
   })
 
   return {

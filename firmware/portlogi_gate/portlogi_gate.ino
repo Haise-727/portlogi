@@ -7,7 +7,7 @@
 #include "time.h"
 #include "secrets.h"
 
-#define SEND_TO_CLOUD 0   // 0 = reader and Wi-Fi only, 1 = also send to Firebase
+#define SEND_TO_CLOUD 1   // 0 = reader and Wi-Fi only, 1 = also send to Firebase
 
 #define PIN_SS 5
 #define PIN_RST 22
@@ -69,10 +69,10 @@ void syncClock() {
   configTime(0, 0, "pool.ntp.org", "time.google.com");
   struct tm t;
   int tries = 0;
-  while (!getLocalTime(&t, 1000) && tries++ < 15) {
+  while (!getLocalTime(&t, 1000) && tries++ < 8) {
     Serial.print("t");
   }
-  if (tries >= 15) {
+  if (tries > 8) {
     Serial.println("\nClock: could not sync");
   } else {
     Serial.println("Clock: synced");
