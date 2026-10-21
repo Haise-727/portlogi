@@ -1,7 +1,7 @@
 # Live security check
 
 Target: https://psjkcvqmjxpwimkenx7bbmsfky0fxqmj.lambda-url.ap-south-1.on.aws
-Run: 2026-10-15T18:48:10.504Z
+Run: 2026-10-21T08:16:32.849Z
 Result: **31 of 31 checks passed**
 
 This checks what an outside visitor can observe. It is not a penetration test and it does not cover the AWS account itself (IAM, billing) or Firebase rules.
@@ -33,7 +33,7 @@ This checks what an outside visitor can observe. It is not a penetration test an
 |---|---|---|
 | TLS 1.2 or newer | pass | TLSv1.3, TLS_AES_128_GCM_SHA256 |
 | Certificate chain trusted | pass | issuer: Amazon |
-| Certificate is not about to expire | pass | 181 days left |
+| Certificate is not about to expire | pass | 176 days left |
 | Plain HTTP (port 80) is not served | pass | port 80: no answer |
 
 ## Hostile requests

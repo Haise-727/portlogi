@@ -33,9 +33,13 @@ const TEXTY = new Set(['.html', '.js', '.mjs', '.css', '.json', '.svg', '.txt', 
  * Content-Security-Policy: scripts only from this origin (no inline script, no eval). Styles allow
  * 'unsafe-inline' because React and the animation library set inline styles; that is a smaller
  * risk than scripts and is the one place the policy is looser than it could be. The connect list
- * names exactly the Firebase database and sign-in services the hardware feed talks to, no wildcards.
+ * names the Firebase database (its project host plus that region's shard hosts) and sign-in services the hardware feed talks to.
  */
 const DB_HOST = 'portlogi-2d2e7-default-rtdb.asia-southeast1.firebasedatabase.app';
+// Firebase's realtime server answers the first connection with a redirect to a shard host in the same region
+// (for example s-gke-apse1-nssi4-11.asia-southeast1.firebasedatabase.app), so allow that region's database
+// hosts. Other regions and other projects' hosts stay blocked.
+const DB_REGION_HOSTS = '*.asia-southeast1.firebasedatabase.app';
 
 export const CSP = [
   "default-src 'self'",
@@ -43,7 +47,7 @@ export const CSP = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https://tile.openstreetmap.org",
   "font-src 'self' data:",
-  `connect-src 'self' https://${DB_HOST} wss://${DB_HOST} https://identitytoolkit.googleapis.com https://securetoken.googleapis.com`,
+  `connect-src 'self' https://${DB_HOST} wss://${DB_HOST} https://${DB_REGION_HOSTS} wss://${DB_REGION_HOSTS} https://identitytoolkit.googleapis.com https://securetoken.googleapis.com`,
   "worker-src 'self' blob:",
   "object-src 'none'",
   "base-uri 'self'",
