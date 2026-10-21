@@ -181,8 +181,31 @@ void setup() {
   Serial.println("Ready. Tap a card.");
 }
 
+// A loose wire can make the RC522 forget its setup. Check it once a second and set it up again
+// if it stopped answering, so a wobble does not need a re-upload.
+bool readerAlive() {
+  byte v = rfid.PCD_ReadRegister(MFRC522::VersionReg);
+  return v == 0x91 || v == 0x92;
+}
+
+void checkReader() {
+  static unsigned long lastCheck = 0;
+  static bool wasAlive = true;
+  if (millis() - lastCheck < 1000) return;
+  lastCheck = millis();
+  if (readerAlive()) {
+    if (!wasAlive) Serial.println("RFID: reader is back");
+    wasAlive = true;
+    return;
+  }
+  if (wasAlive) Serial.println("RFID: reader stopped answering, check the wires. Retrying...");
+  wasAlive = false;
+  rfid.PCD_Init();
+}
+
 void loop() {
   if (WiFi.status() != WL_CONNECTED) connectWifi();
+  checkReader();
 
   if (!rfid.PICC_IsNewCardPresent() || !rfid.PICC_ReadCardSerial()) {
     delay(30);
