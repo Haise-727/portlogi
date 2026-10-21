@@ -1,27 +1,3 @@
-/*
-  Portlogi gate reader.
-
-  ESP32 + RC522 (MFRC522) RFID reader. When a card is tapped, it sends the card's UID to the
-  Firebase Realtime Database as a new record under /scans. The web page listens to that and
-  admits a container for that card.
-
-  Wiring (RC522 -> ESP32), all on 3.3 V:
-    SDA (SS)  -> GPIO 5
-    SCK       -> GPIO 18
-    MOSI      -> GPIO 23
-    MISO      -> GPIO 19
-    RST       -> GPIO 22
-    3.3V      -> 3V3        (never 5V, it can damage the RC522)
-    GND       -> GND
-    IRQ       -> not connected
-  Optional: green LED -> GPIO 25, red LED -> GPIO 26 (each through a 220 ohm resistor to GND),
-            active buzzer -> GPIO 27.
-
-  Bring-up in steps. Watch the Serial Monitor at 115200 baud.
-    Step 1: set SEND_TO_CLOUD to 0. Only Wi-Fi and the card reader are used. Tap a card, see its UID.
-    Step 2: set SEND_TO_CLOUD to 1. The board signs in to Firebase and posts each tap.
-*/
-
 #include <SPI.h>
 #include <MFRC522.h>
 #include <WiFi.h>
@@ -31,7 +7,7 @@
 #include "time.h"
 #include "secrets.h"
 
-#define SEND_TO_CLOUD 0
+#define SEND_TO_CLOUD 0   // 0 = reader and Wi-Fi only, 1 = also send to Firebase
 
 #define PIN_SS 5
 #define PIN_RST 22
@@ -43,7 +19,7 @@ MFRC522 rfid(PIN_SS, PIN_RST);
 
 String idToken;
 String refreshToken;
-unsigned long tokenExpiresAt = 0;  // millis() value when we should refresh
+unsigned long tokenExpiresAt = 0;
 
 String lastUid;
 unsigned long lastUidAt = 0;
@@ -103,7 +79,6 @@ void syncClock() {
   }
 }
 
-// Both Firebase hosts use Google's public roots, which the ESP32 core ships with.
 extern const uint8_t rootca_crt_bundle_start[] asm("_binary_x509_crt_bundle_start");
 extern const uint8_t rootca_crt_bundle_end[] asm("_binary_x509_crt_bundle_end");
 
@@ -146,12 +121,11 @@ bool signIn() {
   idToken = res["idToken"].as<String>();
   refreshToken = res["refreshToken"].as<String>();
   unsigned long secs = String(res["expiresIn"].as<const char *>()).toInt();
-  tokenExpiresAt = millis() + (secs > 120 ? secs - 120 : secs) * 1000UL;  // renew 2 minutes early
+  tokenExpiresAt = millis() + (secs > 120 ? secs - 120 : secs) * 1000UL;
   Serial.println("Sign-in: ok");
   return true;
 }
 
-// Sign in again whenever the one hour token is about to expire.
 bool ensureToken() {
   if (idToken.length() && (long)(tokenExpiresAt - millis()) > 0) return true;
   return signIn();
@@ -168,7 +142,7 @@ bool postScan(const String &uid) {
     return false;
   }
   if (code == 401 || code == 403) {
-    idToken = "";  // force a fresh sign-in next time
+    idToken = "";
   }
   Serial.printf("Scan: HTTP %d %s\n", code, reply.c_str());
   return code == 200;
@@ -193,7 +167,7 @@ void setup() {
   pinMode(PIN_ERR, OUTPUT);
   pinMode(PIN_BUZZ, OUTPUT);
 
-  SPI.begin();  // default ESP32 VSPI: SCK 18, MISO 19, MOSI 23
+  SPI.begin();
   rfid.PCD_Init();
   delay(50);
   byte v = rfid.PCD_ReadRegister(MFRC522::VersionReg);
